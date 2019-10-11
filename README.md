@@ -50,4 +50,4 @@ All props automatically link to their parent object and have dual-way binding - 
 
 12)All Custom Element components must be hyphenated e.g. my-app
 
-20-100 times faster than ReactJS, VueJS and Angular
+## 20-100 times faster than ReactJS, VueJS and Angular
