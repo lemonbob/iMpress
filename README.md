@@ -19,9 +19,12 @@ iapp.data = {
 iapp.methods.customMethod = function(){}
 
 6) set the template as a string literal (or AJAX import) e.g.
-iapp.template = `
+iapp.template = 
+
+```
 <h1 class="my_class">{data.title} custom elements <em>high speed</em><strong> framework</strong> demonstration</h1>
-`
+```
+
 7) data is used in the HTML in curly braces either as attributes or content e.g.
 {data.stars.performance}
 
