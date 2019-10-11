@@ -2,7 +2,7 @@
 
 To use - 
 
-1) create a ES6 module
+1) create an ES6 module
 
 2) import IMPRESS from "./impress.js";
 
