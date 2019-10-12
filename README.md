@@ -53,9 +53,10 @@ i-event={"click":"customMethod($e,$component)"}
 ```
 
 Four special arguments are allowed in event handler methods:
-i)$e or $event for the event object
-ii)$component for the component
-iii)$parent for the component parent
+
+i. $e or $event for the event object
+ii. $component for the component
+iii. $parent for the component parent
 
 9. Props are passed via React-like methods
 ```
