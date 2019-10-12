@@ -1,3 +1,6 @@
+//iMpress high speed framework for HTML Custom Elements
+//Copyright (c) 2019, Polymathic Design, M J Livesey, All rights reserved.
+
 export {IMPRESS as default}
 
 'use strict'
