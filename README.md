@@ -30,7 +30,7 @@ let iapp = IMPRESS.create("i-app");
 ```
 iapp.data = {
 	title:"iMpress",
-	stars:{performance:1000},	
+	stars:{performance:'light speed'},	
 };
 ```
 5. set the methods e.g.
