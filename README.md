@@ -22,7 +22,9 @@ To use -
 2. import IMPRESS from "./impress.js";
 
 3. declare a variable with the argument as the Custom Element tag you want to create (all Custom Elements must be hyphenated: e.g. 
+```
 let iapp = IMPRESS.create("i-app");
+```
 
 4. set the data object e.g.
 ```
@@ -41,7 +43,9 @@ iapp.template = `<h1 class="my_class">{data.title} custom elements <em>high spee
 ```
 
 7. data is used in the HTML in curly braces either as attributes or content e.g.
+```
 {data.stars.performance}
+```
 
 8. methods are added as JSON attributes - duplicate events are allowed
 ```
