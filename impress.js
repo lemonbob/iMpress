@@ -701,11 +701,3 @@ const IMPRESSCOMPONENT = function(iNode, parentNode, parentComponent){
 const iWait = function(time){
   return new Promise((resolve) => setTimeout(()=>resolve(), time));
 }
-
-
-setTimeout(()=>{
-  console.log("TEST OUTPUT");
-  console.log(impressObjects);
-  console.log(impressComponents);
-},500);
-
