@@ -72,7 +72,7 @@ istar.methods.propsChange = function(e,component){
 ```
 All props automatically link to their parent object and have dual-way binding - a change of prop affects parent and vice-versa
 
-11. All components can be added or removed simply by adding or removing their Custom Element DOM tag - In the main HTML file simply add the app tag e.g <i-app></i-app> and add components dynamically via DOM mentods within the methods or add to the template of the iapp module. (or whatever it is named).
+11. All components can be added or removed simply by adding or removing their Custom Element HTML tag - in the main HTML file simply add the app tag e.g <i-app></i-app> - add components dynamically via DOM mentods within the methods or add to the template of the iapp module. (or whatever it is named).
 
 12. All Custom Element components must be hyphenated e.g. my-app, shopping-cart, address-form etc.
 
