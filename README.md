@@ -21,7 +21,7 @@ To use -
 
 2. import IMPRESS from "./impress.js";
 
-3. declare a variable with the argument as the Custom Element tag you want to create (all Custom Elements must be hyphenated: e.g. 
+3. declare a variable with the argument as the Custom Element tag you want to create (all Custom Elements must be hyphenated) and call the IMPRESS.create method: e.g. 
 ```
 let iapp = IMPRESS.create("i-app");
 ```
