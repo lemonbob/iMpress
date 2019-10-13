@@ -47,7 +47,7 @@ iapp.template = `<h1 class="my_class">{data.title} custom elements <em>high spee
 {data.stars.performance}
 ```
 
-8. methods are added as JSON attributes - duplicate events are allowed
+8. methods are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string
 ```
 i-event={"click":"customMethod($e,$component)"}
 ```
