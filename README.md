@@ -34,7 +34,7 @@ To use -
 
 2. import IMPRESS from "./impress.js";
 
-3. set the data object either an object or function return are fine e.g.
+3. set the data object either an object or function return are fine e.g. (impress will deepClone an object)
 ```
 data = {
    title:"iMpress"		
