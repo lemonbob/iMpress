@@ -88,7 +88,7 @@ No more contrived usage of class props to pass mutation methods throughout a sys
 
 12. All methods exist on the object base, not as class instance methods. Consequently memory usage is a fraction the size of most frameworks. Methods receive the component instance as a parameter in order to access data and update state, this results in extremely fast performance. Pass in the instance as $c, or retrive the instance via the DOM node or i-guid attribute and the internal query methods.
 
-13. All components can be added or removed simply by adding or removing their Custom Element HTML tag. No more contrived solutions such as portals, just add a tag where you want anywhere in the DOM. Everything is tracked, every component has a guid, it can be traced, used, and removed simply by requesting the component object.
+13. All components can be added or removed simply by adding or removing their Custom Element HTML tag. No more contrived solutions such as portals, just add a tag where you want anywhere in the DOM. Everything is tracked, every component has a guid, it can be traced, used, and removed simply by requesting the component instance object.
 ```
 <i-app></i-app> 
 ```
