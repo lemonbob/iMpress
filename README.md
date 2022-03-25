@@ -84,7 +84,7 @@ $c.setState(value, 'props.title');
 ```
 No more contrived usage of class props to pass mutation methods throughout a system as is common in React.
 
-11. In-built query methods allow robust and debuggable communication between parent/child/siblings. No more eventbus/emits needed.
+11. In-built query methods allow robust and debuggable communication between parent/child/siblings. No more eventbus/emits/contextAPI needed.
 
 12. All methods exist on the object base, not as class instance methods. Consequently memory usage is a fraction the size of most frameworks. Methods receive the component instance as a parameter in order to access data and update state, this results in extremely fast performance. Pass in the instance as $c, or retrive the instance via the DOM node or i-guid attribute and the internal query methods.
 
