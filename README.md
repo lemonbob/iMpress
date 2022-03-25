@@ -23,7 +23,7 @@ iMpress is different - it is a high-speed lightweight wrapper for HTML Custom El
 - No need for eventbus/emits/context API/sending class props — use the in-built custom query engine.
 - NO PROXYS, NO REACTIVE SETTERS (data Vuetation) — data models can be handled externally or using MVC methodology without problems.
 
-In engine terms, ReactJS, Angular, VueJS are steam powered monsters — albeit with large backers — but isn't it time for a more modern approach? Isn't it time we dumped old ideas, such as the Virtual DOM, for lightspeed performance? Instead of new releases such as Vue3 or React, some of which are slower than their forebears, the saying, you can't polish coal comes to mind. iMpress is new, it has been designed to provide a truly up to date solution.
+In engine terms, ReactJS, Angular, VueJS are steam powered monsters — albeit with large backers — but isn't it time for a more modern approach? Isn't it time we dumped old ideas, such as the Virtual DOM, for lightspeed performance? Instead of new releases such as Vue3 or React, some of which are slower than their forebears, the saying, you can't polish coal comes to mind. iMpress is new, it has been designed to provide a truly up-to-date solution.
 
 ## iMpress
 
