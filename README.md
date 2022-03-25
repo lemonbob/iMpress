@@ -59,7 +59,7 @@ let iapp = IMPRESS.create("i-app", template, data, methods);
 
 7. data is used in the HTML in curly braces either as attributes or content e.g.
 ```
-{data.stars.performance}
+{data.title}
 ```
 
 8. methods are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string
