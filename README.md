@@ -10,18 +10,18 @@ So where does that leave frameworks? Frameworks only have one benefit, state man
 
 iMpress is different - it is a high-speed lightweight wrapper for HTML Custom Elements. iMpress is a tool for rapid web development built the way frameworks were truly intended - a View layer to be used with whatever data architecture or model, such as MVC, that meets the requirements of the platform whatever the size or scale. It is upto 400 times faster than Vue 3, and makes use of HTML Custom Elements in ES6 modules. It is designed to allow the coder to be in control, and allows programmers the freedom to code in a technical debt free environment using modern Javascript. Benefits of iMpress are:
 
--Uses native support, no Virtual DOM, no more technical debt!
--Data acess upto 400x faster than Vue3 and other frameworks.
--Method calls run upto 100x faster than Vue3 and other frameworks.
--Component creation/destruction as fast as the fastest frameworks.
--Memory usage is a fraction of the size of other frameworks, typically 5-10 times smaller.
--Component code length is more concise, upto 20% smaller codebase.
--Props are handled correctly and are truly immutable.
--Synchonous code, no more waiting for "nextTick" or components to mount.
--Or use async in your life cycle methods, if desired, you are in full control.
--Server-side and dynamic templates.
--No need for eventbus/emits/context API/sending class props — use the in-built custom query engine.
--NO PROXYS, NO REACTIVE SETTERS (data Vuetation) — data models can be handled externally or using MVC methodology without problems.
+- Uses native support, no Virtual DOM, no more technical debt!
+- Data acess upto 400x faster than Vue3 and other frameworks.
+- Method calls run upto 100x faster than Vue3 and other frameworks.
+- Component creation/destruction as fast as the fastest frameworks.
+- Memory usage is a fraction of the size of other frameworks, typically 5-10 times smaller.
+- Component code length is more concise, upto 20% smaller codebase.
+- Props are handled correctly and are truly immutable.
+- Synchonous code, no more waiting for "nextTick" or components to mount.
+- Or use async in your life cycle methods, if desired, you are in full control.
+- Server-side and dynamic templates.
+- No need for eventbus/emits/context API/sending class props — use the in-built custom query engine.
+- NO PROXYS, NO REACTIVE SETTERS (data Vuetation) — data models can be handled externally or using MVC methodology without problems.
 
 In engine terms, ReactJS, Angular, VueJS are steam powered monsters ... or even horse drawn carts - albeit with heavy backers and a large community - but isn't it time for a more modern approach? Isn't it time we dumped old ideas, such as the Virtual DOM, for lightspeed performance? Instead new releases of outdated tech, essentially polished coal, iMpress has been designed to provide a truly up to date solution.
 
