@@ -78,7 +78,7 @@ ii. $c or $component for the component
 <i-child title={data.title}></i-child>
 ```
 
-10. Props are not mutable. They exist only as namespaces for the child component to access the true owner of the data. Props when properly conceived are not local data, nor should they ever be so. To modify a prop, internally a propsMap contains data references to the true owner of the data, a setState method on each component can be used to request mutation.
+10. Props are not mutable. They exist only as namespaces for the child component to access the true owner of the data. Props when properly conceived are not local data, nor should they ever be considered as local data. To modify a prop, internally a propsMap contains data references to the true owner of the data, a setState method on each component can be used to request mutation and records a full log of where the data was changed.
 ```
 $c.setState(value, 'props.title');
 ```
