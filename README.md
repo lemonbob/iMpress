@@ -8,9 +8,22 @@ There was a time for these frameworks pre-ES6 (2015) when Javascript lacked perf
 
 So where does that leave frameworks? Frameworks only have one benefit, state management - making it easy to maintain the view with the model. However, with one-way data flow (immutable props) necessitating prop drilling, and other restrictions, a common consequence is that as software scales this supposed virtue becomes a hinderance. State management is actually poorly handled by existing frameworks in anything but the simplest of cases. Complex state management handlers such as Redux and Vuex have been required imposing restrictions and boiler plate on developers. More and more developers are suggesting the above frameworks should not be used, giants such as Netflix have gone to great expense to remove frameworks because of poor performance. GitHub removed JQuery and went framework free citing technical debt. In my experience, developing using build tools, a requirement of most frameworks, results in a loss of 10-25% productivity per day while waiting for compiles & "hot" reloads, too.  
 
-iMpress is different - it is a high-speed lightweight wrapper for HTML Custom Elements. No need for build-tools like Babel and Webpack, it has in-built advanced lightweight state management (coming soon) - known as Super Props - iMpress is a tool for rapid web development built the way frameworks were truly intended. It is up to 100 times faster than current frameworks, and makes use of HTML Custom Elements in ES6 modules. It is designed for efficiet state management and allows programmers the freedom to code in a technical debt free environment using modern Javascript.  
+iMpress is different - it is a high-speed lightweight wrapper for HTML Custom Elements. No need for build-tools like Babel and Webpack, it has in-built advanced lightweight state management (coming soon) - known as Super Props - iMpress is a tool for rapid web development built the way frameworks were truly intended. It is up to 400 times faster than Vue 3, and makes use of HTML Custom Elements in ES6 modules. It is designed for efficiet state management and allows programmers the freedom to code in a technical debt free environment using modern Javascript. Benefits of iMpress are:
 
-In engine terms, ReactJS, Angular, VueJS are steam powered monsters ... or even horse drawn carts - albeit with heavy backers and a large community - but isn't it time for a more modern approach? Isn't it time we dumped Victorian ideas, such as the Virtual DOM, for lightspeed performance? Instead new releases of outdated tech, essentially polished coal, iMpress has been designed to provide a truly up to date solution.
+Uses native support, no Virtual DOM, no more technical debt!
+Data acess upto 400x faster than Vue3 and other frameworks.
+Method calls run upto 100x faster than Vue3 and other frameworks.
+Component creation/destruction as fast as the fastest frameworks.
+Memory usage is a fraction of the size of other frameworks, typically 5-10 times smaller.
+Component code length is more concise, upto 20% smaller codebase.
+Props are handled correctly and are truly immutable.
+Synchonous code, no more waiting for "nextTick" or components to mount.
+Use async in your life cycle methods, if desired.
+Server-side and dynamic templates.
+No need for eventbus/emits/context API/sending class props — use the in-built custom query engine.
+NO PROXYS, NO REACTIVE SETTERS (data Vuetation) — data models can be handled externally or using MVC methodology without problems.
+
+In engine terms, ReactJS, Angular, VueJS are steam powered monsters ... or even horse drawn carts - albeit with heavy backers and a large community - but isn't it time for a more modern approach? Isn't it time we dumped old ideas, such as the Virtual DOM, for lightspeed performance? Instead new releases of outdated tech, essentially polished coal, iMpress has been designed to provide a truly up to date solution.
 
 ## iMpress
 
@@ -21,25 +34,27 @@ To use -
 
 2. import IMPRESS from "./impress.js";
 
-3. declare a variable with the argument as the Custom Element tag you want to create (all Custom Elements must be hyphenated) and call the IMPRESS.create method: e.g. 
+3. set the data object either an object or function return are fine e.g.
 ```
-let iapp = IMPRESS.create("i-app");
-```
-
-4. set the data object e.g.
-```
-iapp.data = {
-	title:"iMpress",
-	stars:{performance:'light speed'},	
+data = {
+   title:"iMpress"		
 };
 ```
-5. set the methods e.g.
+4. set the methods e.g.
 ```
-iapp.methods.customMethod = function(){}
+methods = {
+   customMethod: () => {
+   //your code
+   }
 ```
-6. set the template as a string literal or import HTML file via AJAX e.g.
+5. set the template as a string literal or import HTML file via AJAX e.g.
 ```
-iapp.template = `<h1 class="my_class">{data.title} custom elements <em>high speed</em><strong> framework</strong> demonstration</h1>`
+template = `<h1 class="my_class">{data.title} custom elements <em>high speed</em><strong> framework</strong> demonstration</h1>`
+```
+
+6. declare a variable with the argument as the Custom Element tag you want to create (all Custom Elements must be hyphenated) and call the IMPRESS.create method, passing in the template, data and methods as parameters (or defined as arguments): e.g. 
+```
+let iapp = IMPRESS.create("i-app", template, data, methods);
 ```
 
 7. data is used in the HTML in curly braces either as attributes or content e.g.
@@ -56,28 +71,24 @@ Four special arguments are allowed in event handler methods:
 
 i. $e or $event for the event object
 
-ii. $component for the component
-
-iii. $parent for the component parent
+ii. $c or $component for the component
 
 9. Props are passed via React-like methods
 ```
-<i-child nstars={data.stars.performance}></i-child>
+<i-child title={data.title}></i-child>
 ```
 
-10. Props are mutable and can be accessed via the object component.props e.g.
+10. Props are not mutable. They exist only as namespaces for the child component to access the true owner of the data. Props when properly conceived are not local data, nor should they ever be so. To modify a prop, internally a propsMap contains data references to the true owner of the data, a setState method on each component can be used to request mutation.
 ```
-istar.methods.propsChange = function(e,component){
-	component.props.nstars = e.target.value;
+$c.setState(value, 'props.title');
 ```
-All props automatically link to their parent object and have dual-way binding - a change of prop affects parent and vice-versa
+All props automatically link to their parent object and due to the method call are interally tracked meaning no more contrived usage of class props to pass mutation methods throughout a system.
 
-11. All components can be added or removed simply by adding or removing their Custom Element HTML tag - in the main HTML file simply add the app tag e.g 
+11. All components can be added or removed simply by adding or removing their Custom Element HTML tag. No more contrived solutions such as portals, just add a tag where you want anywhere in the DOM. Everything is tracked, every component has a guid, it can be traced, used, and removed simply by requesting the component object.
 ```
 <i-app></i-app> 
 ```
-Or add components dynamically via DOM mentods within the methods or add to the template of the iapp module. (or whatever it is named).
 
-12. All Custom Element components must be hyphenated e.g. my-app, shopping-cart, address-form etc.
+12. All Custom Element components must be hyphenated e.g. my-app, shopping-cart, address-form etc. All methods exist on the object base, not as class instance methods. Consequently memory usage is a fraction the size of most frameworks. Methods receive the component instance as a parameter in order to access data and update state, this results in extremely fast performance.
 
-## up to 100 times faster than ReactJS, VueJS and Angular
+## up 400 times faster than ReactJS, Vue and Angular
