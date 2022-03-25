@@ -82,13 +82,17 @@ ii. $c or $component for the component
 ```
 $c.setState(value, 'props.title');
 ```
-All props automatically link to their parent object and due to the method call are interally tracked meaning no more contrived usage of class props to pass mutation methods throughout a system.
+No more contrived usage of class props to pass mutation methods throughout a system as is common in React.
 
-11. All components can be added or removed simply by adding or removing their Custom Element HTML tag. No more contrived solutions such as portals, just add a tag where you want anywhere in the DOM. Everything is tracked, every component has a guid, it can be traced, used, and removed simply by requesting the component object.
+11. In-built query methods to allow communication between parent/child/siblings. No more eventbus/emits needed.
+
+12. All methods exist on the object base, not as class instance methods. Consequently memory usage is a fraction the size of most frameworks. Methods receive the component instance as a parameter in order to access data and update state, this results in extremely fast performance. Pass in the instance as $c, or retrive the instance via the DOM node or i-guid attribute and the internal query methods.
+
+13. All components can be added or removed simply by adding or removing their Custom Element HTML tag. No more contrived solutions such as portals, just add a tag where you want anywhere in the DOM. Everything is tracked, every component has a guid, it can be traced, used, and removed simply by requesting the component object.
 ```
 <i-app></i-app> 
 ```
 
-12. All Custom Element components must be hyphenated e.g. my-app, shopping-cart, address-form etc. All methods exist on the object base, not as class instance methods. Consequently memory usage is a fraction the size of most frameworks. Methods receive the component instance as a parameter in order to access data and update state, this results in extremely fast performance.
+14. All Custom Element components must be hyphenated e.g. my-app, shopping-cart, address-form etc. 
 
-## up 400 times faster than ReactJS, Vue and Angular
+## upto 400 times faster than ReactJS, Vue and Angular
