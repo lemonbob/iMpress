@@ -18,10 +18,10 @@ export default IMPRESS;
  * @param {String} name
  * @returns
  */
-IMPRESS.create = (name, template, data, methods) => {
+IMPRESS.create = (name, template, data = {}, methods = {}) => {
 	name = name.toLowerCase();
 
-	if (impressObjects[name] === undefined) {
+	if (impressObjects[name] == undefined) {
 		impressObjects[name] = new IMPRESSOBJECT(name, template, data, methods);
 		//Callbacks to define HTML custom Element
 		customElements.define(
@@ -33,9 +33,11 @@ IMPRESS.create = (name, template, data, methods) => {
 					_impress.addComponent(this);
 				}
 				//Callback when components gets added to the DOM - "connected"
-				connectedCallback() {}
+				//connectedCallback() {
+				//	_impress.connectComponent(this);
+				//}
 				disconnectedCallback() {
-					_impress.removeComponent(this);
+					_impress.disconnectComponent(this);
 				}
 			}
 		);
@@ -53,28 +55,26 @@ IMPRESS.deepClone = (source, optionsObject = {}) => {
 };
 
 IMPRESS.getComponentByNode = (targetNode) => {
-	let iComponentNames = Object.keys(impressComponents);
-	let i = iComponentNames.length;
-	while (i--) {
-		let component = impressComponents[iComponentNames[i]].find((v) => v.iNode === targetNode);
-		if (component != undefined) return component;
+	if (targetNode != undefined) {
+		let iGuid = targetNode.getAttribute('i-guid');
+		return impressComponents[iGuid];
 	}
 };
 
 IMPRESS.getComponentById = (iGuid) => {
-	let iComponentNames = Object.keys(impressComponents);
-	let i = iComponentNames.length;
-	while (i--) {
-		let component = impressComponents[iComponentNames[i]].find((v) => v.iGuid === iGuid);
-		if (component != undefined) return component;
-	}
+	return impressComponents[iGuid];
 };
 
 IMPRESS.getComponentsByName = (name) => {
-	return impressComponents[name];
+	let componentArray = [];
+	let componentGuidKeys = Object.keys(impressComponents);
+	for (let i = 0, component; (component = impressComponents[componentGuidKeys[i]]) !== undefined; i++) {
+		if (component.name === name) componentArray.push(component);
+	}
+	return componentArray;
 };
 
-IMPRESS.removeComponent = (component) => {
+IMPRESS.destroyComponent = (component) => {
 	component.iNode.parentNode.removeChild(component.iNode);
 };
 
@@ -91,17 +91,12 @@ IMPRESS.closestComponent = (component, queryString) => {
 };
 
 /**
- * destroy all impress objects of a certain type
- * @param {String} name
+ * Universal wait promise waits time(ms) before resolving
+ * @param {Number} time
+ * @returns
  */
-IMPRESS.removeAll = (name) => {
-	if (impressObjects[name] !== undefined) {
-		for (let i = 0; i < impressComponents[name].length; i++) {
-			let parentNode = impressComponents[name][i].iNode.parentNode;
-			parentNode.removeChild(impressComponents[name][i].iNode);
-		}
-		//delete impressObjects[name];
-	}
+IMPRESS.wait = (time) => {
+	return new Promise((resolve) => setTimeout(() => resolve(), time));
 };
 
 //PRIVATE/////////////////////////////////////////////////////////////////////
@@ -111,74 +106,74 @@ let _iGuid = 1000;
 
 //CONSTRUCTOR METHODS
 _impress.addComponent = (thisNode) => {
-	let name = thisNode.localName;
+	let currentComponent = new IMPRESSCOMPONENT(thisNode);
 
-	//add the component to impressComponents array.
-	if (impressComponents[name] === undefined) {
-		impressComponents[name] = [];
-	}
-	let parentNode = _impress.findParent(thisNode);
-	let parentComponent = _impress.findParentComponent(parentNode);
-	let len = impressComponents[name].push(new IMPRESSCOMPONENT(thisNode, parentComponent));
-	let currentComponent = impressComponents[name][len - 1];
-
-	if (parentComponent != undefined) {
-		parentComponent.iChildren.push(currentComponent);
-		if (parentComponent.hasMounted === true) {
-			_impress.mountComponent(currentComponent);
-		}
+	if (currentComponent.iParent != undefined) {
+		currentComponent.iParent.iChildren.push(currentComponent);
+		if (currentComponent.iParent.isMounted === true) _impress.createComponent(currentComponent);
 	} else {
-		_impress.mountComponent(currentComponent);
+		_impress.createComponent(currentComponent);
 	}
 };
+
+/*_impress.connectComponent = (thisNode) => {
+	let name = thisNode.localName;
+	let currentComponent = IMPRESS.getComponentByNode(thisNode, name);
+
+	if (currentComponent.isMounted === false) {
+		//console.log('connectedCallback - mounted false', currentComponent.name);
+	} else {
+		let iObject = impressObjects[name];
+		console.log('connectedCallback - appended', currentComponent.name, currentComponent.iNode.isConnected);
+		//TODO refresh - i-for data if appened
+		//TODO what do we do about the parent and props of appended i-for nodes moved outside of the i-for structure???
+		if (typeof iObject.methods.afterAppend === 'function') {
+			iObject.methods.afterAppend(currentComponent);
+		}
+	}
+};*/
 
 /**
  * @private
  * @description
  * mounts the component
  * @param {Object} currentComponent
- * 
+ *
  */
-_impress.mountComponent = async (currentComponent) => {
+_impress.createComponent = async (currentComponent) => {
 	let iObject = impressObjects[currentComponent.name];
-	if (typeof iObject.methods.created === 'function') {
-		await iObject.methods.created(currentComponent);
-	}
+
+	if (typeof iObject.methods.beforeCreate === 'function') await iObject.methods.beforeCreate(currentComponent);
 	//let iGuidTemplate = iObject.template.replace(/i-attribute="/g, `i-attribute="${currentComponent.iGuid}-`);
-	currentComponent.iNode.innerHTML = iObject.template;
-	currentComponent.iNode.setAttribute('i-guid', currentComponent.iGuid);
-	let iTextNodes = _impress.getTextNodes(currentComponent);
-	_impress.setiProps(currentComponent, iTextNodes);
-	_impress.setiData(currentComponent, iTextNodes);
+
+	//currentComponent.iNode.innerHTML = iObject.template;
+	currentComponent.iNode.appendChild(iObject.templateNode.content.cloneNode(true));
+
+	_impress.setiProps(currentComponent);
+	_impress.setiData(currentComponent);
 	_impress.setiAttributes(currentComponent);
 	_impress.refreshComponent(currentComponent);
-	currentComponent.hasMounted = true;
-	if (typeof iObject.methods.mounted === 'function') {
-		await iObject.methods.mounted(currentComponent);
-	}
+	//component has mounted
+	currentComponent.isMounted = true;
+
+	if (typeof iObject.methods.afterMounted === 'function') await iObject.methods.afterMounted(currentComponent);
+
 	for (let n = 0; n < currentComponent.iChildren.length; n++) {
-		_impress.mountComponent(currentComponent.iChildren[n]);
+		_impress.createComponent(currentComponent.iChildren[n]);
 	}
 };
 
-_impress.findParent = function (thisNode) {
+_impress.findParentComponentByNode = function (thisNode) {
 	let parentNode = thisNode.parentNode;
 	let parentName = parentNode.localName;
-	while (parentNode.localName !== 'body' && impressComponents[parentName] === undefined) {
+
+	while (parentNode.localName !== 'body' && impressObjects[parentName] === undefined) {
 		parentNode = parentNode.parentNode;
 		parentName = parentNode.localName;
 	}
-	if (parentName !== 'body') {
-		return parentNode;
-	} else {
-		return undefined;
-	}
-};
 
-_impress.findParentComponent = function (parentNode) {
-	if (parentNode !== undefined) {
-		let parentIndex = impressComponents[parentNode.localName].findIndex((v) => v.iNode === parentNode);
-		return impressComponents[parentNode.localName][parentIndex];
+	if (parentName !== 'body') {
+		return IMPRESS.getComponentByNode(parentNode);
 	} else {
 		return undefined;
 	}
@@ -187,33 +182,62 @@ _impress.findParentComponent = function (parentNode) {
 ////////////////////////////////////////////////////////////////////////////////
 //DESTRUCTOR METHODS
 
-_impress.removeComponent = async (thisNode) => {
+_impress.disconnectComponent = async (thisNode) => {
+	//appended nodes are still connected - do not destroy them
 	let name = thisNode.localName;
-	let index = impressComponents[name].findIndex((v) => v.iNode === thisNode);
-	let iObject = impressObjects[name];
-	let currentComponent = impressComponents[name][index];
+	let iGuid = thisNode.getAttribute('i-guid');
+	let currentComponent = impressComponents[iGuid];
 
-	if (typeof iObject.methods.beforeDestroy === 'function') {
-		await iObject.methods.beforeDestroy(currentComponent);
+	//if component node is still connected it has been appended
+	if (currentComponent == undefined) return;
+
+	//if the node is still connected, the component has been appened/added somewhere else in the DOM
+	if (thisNode.isConnected === true) {
+		let iObject = impressObjects[name];
+		let parentComponent = currentComponent.iParent;
+		if (typeof iObject.methods.afterMove === 'function') iObject.methods.afterMove(currentComponent);
+		if (parentComponent != undefined && typeof impressObjects[parentComponent.name].methods.childMoved === 'function') impressObjects[parentComponent.name].methods.childMoved(parentComponent, currentComponent);
+		return;
 	}
-	//remove observable references in parent iObject for props and data
+	//TODO destroy all children - asycn promise issue
+	//create a flattened array of the component tree starting from the currentComponent
+	if (currentComponent.iChildren[0] === undefined) {
+		_impress.destroyComponent(currentComponent);
+	} else {
+		let componentArray = [currentComponent];
+		let j = 0;
+		while (componentArray[j] !== undefined) {
+			componentArray.push(...componentArray[j].iChildren);
+			j++;
+		}
+		//loop backwards and destroy all the components
+		for (let i = componentArray.length - 1, component; (component = componentArray[i]) !== undefined; i--) {
+			_impress.destroyComponent(component);
+		}
+	}
+};
+
+_impress.destroyComponent = async (currentComponent) => {
+	let name = currentComponent.name;
+	let iObject = impressObjects[name];
+
+	if (typeof iObject.methods.beforeDestroy === 'function') await iObject.methods.beforeDestroy(currentComponent);
+	//remove iChildren references in parent
 	if (currentComponent.iParent != undefined) {
 		let childIndex = currentComponent.iParent.iChildren.indexOf(currentComponent);
-		if (childIndex !== -1) {
-			currentComponent.iParent.iChildren.splice(childIndex, 1);
-		}
+		if (childIndex !== -1) currentComponent.iParent.iChildren.splice(childIndex, 1);
 	}
 	//remove dataOwner links to child
 	let propsKeys = Object.keys(currentComponent._propsMaps);
 	for (let propsKey of propsKeys) {
 		let propsMap = currentComponent._propsMaps[propsKey];
-		let observerNames = Object.keys(propsMap.dataOwner._observables);
-
-		for (let observerName of observerNames) {
-			let observableIndex = propsMap.dataOwner._observables[observerName].target.indexOf(currentComponent);
-			if (observableIndex !== -1) {
-				propsMap.dataOwner._observables[observerName].target.splice(observableIndex, 1);
-				propsMap.dataOwner._observables[observerName].dataName.splice(observableIndex, 1);
+		let observableIndex = propsMap.dataOwner._observables[propsMap.dataPath].target.indexOf(currentComponent);
+		if (observableIndex !== -1) {
+			if (propsMap.dataOwner._observables[propsMap.dataPath].target[1] !== undefined) {
+				propsMap.dataOwner._observables[propsMap.dataPath].target.splice(observableIndex, 1);
+				propsMap.dataOwner._observables[propsMap.dataPath].dataName.splice(observableIndex, 1);
+			} else {
+				delete propsMap.dataOwner._observables[propsMap.dataPath];
 			}
 		}
 	}
@@ -221,11 +245,15 @@ _impress.removeComponent = async (thisNode) => {
 	for (let index = 0; index < currentComponent._iEventNodes.length; index++) {
 		currentComponent._iEventNodes[index].removeEventListener(currentComponent._iEventListener[index].listener, currentComponent._iEventListener[index]);
 	}
-	if (typeof iObject.methods.destroyed === 'function') {
-		await iObject.methods.destroyed(currentComponent);
+	if (typeof iObject.methods.destroyed === 'function') await iObject.methods.destroyed(currentComponent);
+	//ported nodes are not in their parent component - they must be removed manually
+	if (currentComponent.iNode.isConnected === true) {
+		let iNode = currentComponent.iNode;
+		delete impressComponents[currentComponent.iGuid];
+		iNode.parentNode.removeChild(iNode);
+	} else {
+		delete impressComponents[currentComponent.iGuid];
 	}
-	impressComponents[name].splice(index, 1);
-	if (impressComponents[name].length === 0) delete impressComponents[name];
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,27 +276,19 @@ _impress.getTextNodes = (currentComponent) => {
  * @description
  * sets any data observables to the component
  * scans the text nodes in the template and adds targets for the observables
+ * TODO
  * @param {Object} currentComponent
  */
-_impress.setiData = function (currentComponent, iTextNodes) {
-	//match any `{data.` and link the target to the observer to allow interpolation of the text
-	for (let i = 0; i < iTextNodes.length; i++) {
-		let iDataDuplicates = [];
-		let iDataValue = iTextNodes[i].nodeValue.match(/(data\.)[^\}\s]+/g);
-		if (iDataValue == undefined) continue;
-		//Add Observer for data match, avoid duplicates in same node as Observer algoritm replaces all data in any given node
-		for (let n = 0, nLen = iDataValue.length; n < nLen; n++) {
-			let dataPath = iDataValue[n];
-			if (iDataDuplicates.includes(dataPath) === false) {
-				iDataDuplicates.push(dataPath);
-				let objProp = _impress.objectPath(currentComponent, dataPath);
+_impress.setiData = function (currentComponent) {
+	let iObject = impressObjects[currentComponent.name];
+	let pathStrings = Object.keys(iObject._textData);
 
-				if (objProp == undefined) {
-					throw new Error(`Data error: <${currentComponent.name}> --- i-module specifies data in template at:\n\n"${iTextNodes[i].outerHTML}"\n\ni-data attribute "${dataPath}" does not match data!`);
-				}
-				_impress.createDataObserver(currentComponent, dataPath);
-				_impress.addDataObserverTarget(currentComponent, dataPath, iTextNodes[i]);
-			}
+	for (let pathString of pathStrings) {
+		if (pathString.indexOf('data.') === 0) {
+			_impress.createDataObserver(currentComponent, pathString);
+		} else {
+			let propsData = _impress.propsToDataNamespaceConversion(currentComponent, pathString);
+			_impress.createDataObserver(propsData.dataOwner, propsData.dataName, currentComponent, propsData.propsName);
 		}
 	}
 };
@@ -280,12 +300,7 @@ _impress.setiData = function (currentComponent, iTextNodes) {
  * @param {Object} currentComponent
  * @param {String} dataPath
  */
-_impress.createDataObserver = (currentComponent, dataPath, isCreateDataTarget = true, dataTarget = currentComponent, dataName = dataPath) => {
-	if (isCreateDataTarget === true && currentComponent._dataTargets[dataPath] == undefined) {
-		currentComponent._dataTargets[dataPath] = {};
-		currentComponent._dataTargets[dataPath].target = [];
-		currentComponent._dataTargets[dataPath].replaceText = [];
-	}
+_impress.createDataObserver = (currentComponent, dataPath, dataTarget = currentComponent, dataName = dataPath) => {
 	if (currentComponent._observables[dataPath] == undefined) {
 		currentComponent._observables[dataPath] = {};
 		currentComponent._observables[dataPath].target = [];
@@ -297,32 +312,38 @@ _impress.createDataObserver = (currentComponent, dataPath, isCreateDataTarget = 
 	}
 };
 
-/**
- * @private
- * @description
- * adds a target node linked to an observable - these nodes will be replace whenever the obverver fires
- * @param {Object} currentComponent
- * @param {String} dataPath
- * @param {Object} target
- */
-_impress.addDataObserverTarget = (currentComponent, dataPath, target) => {
-	if (target != undefined) {
-		currentComponent._dataTargets[dataPath].target.push(target);
-		currentComponent._dataTargets[dataPath].replaceText.push(target.nodeValue);
+_impress.mapPropToDataOwner = (currentComponent, pathString) => {
+	let propsPathArray = pathString.match(/[^\[\]\.\{\}]+/g);
+	let dataPathArray;
+	let propsName = 'props';
+
+	for (let i = 1, pathPart; (pathPart = propsPathArray[i]) !== undefined; i++) {
+		if (dataPathArray == undefined) propsName = `${propsName}.${pathPart}`;
+		else dataPathArray.push(pathPart);
+
+		if (dataPathArray == undefined && currentComponent.iParent._propsMaps[propsName] != undefined) {
+			dataPathArray = currentComponent.iParent._propsMaps[propsName].dataPathArray.slice(0);
+		}
 	}
+
+	if (dataPathArray != undefined) return { dataName: dataPathArray.join('.'), dataPathArray: dataPathArray, propsName: propsName, propsPath: pathString, dataOwner: currentComponent.iParent._propsMaps[propsName].dataOwner };
 };
 
 /**
  * @private
  * @description
  * component props constructor method - links the dataOwner of the prop via nameSpace lookup
+ * props are detailed in the tag of the Custom Element child component, once set they are removed from the DOM
+ * only props and i-for attributes can be added to the tag of a Custom Element child component
+ * i-events and other attributes are invalid on Custom Element child components
  * adds observer for the props in the data owner observables structure
  * @param {Object} currentComponent
  */
-_impress.setiProps = (currentComponent, iTextNodes) => {
+_impress.setiProps = (currentComponent) => {
 	let attributes = currentComponent.iNode.attributes;
-	let parentComponent = currentComponent.iParent;
+	let dataOwner = currentComponent.iParent;
 	let isComponentPassedProps = false;
+
 	for (let attribute of attributes) {
 		if (attribute.value.indexOf('{props.') === 0 || attribute.value.indexOf('{data.') === 0) {
 			isComponentPassedProps = true;
@@ -330,9 +351,10 @@ _impress.setiProps = (currentComponent, iTextNodes) => {
 		}
 	}
 
-	if (parentComponent !== undefined && isComponentPassedProps === true) {
+	if (dataOwner !== undefined && isComponentPassedProps === true) {
 		//set props definitions passed into component in its attribute tag
-		for (let i = 0, iLen = attributes.length; i < iLen; i++) {
+		let i = attributes.length;
+		while (i--) {
 			//restrict searched attributes to ones with {data.xxx} or {props.xxx}. You can pass props by "prop drilling".
 			let isPropFromData = attributes[i].value.indexOf('{data.') === 0;
 			let isPropFromProp = attributes[i].value.indexOf('{props.') === 0;
@@ -345,77 +367,35 @@ _impress.setiProps = (currentComponent, iTextNodes) => {
 
 				//find the ultimate owner of the data - i.e. is the from data or a prop from a prop
 				let dataPath = attributes[i].value.replace(/[{}]/g, '');
+				let dataPathArray;
 				//nested props - decode namespace transformations to find true data owner and path
-				if (dataPath.indexOf('data.') !== 0) {
-					let propsData = _impress.propsToDataNamespaceConversion(currentComponent, dataPath);
-					if (propsData == undefined) throw new Error(`iMpress error ---  "${currentComponent.name}" props: ${attributes[i].name}=${attributes[i].value} not map to anyy known data namespace!`);
-					parentComponent = propsData.dataOwner;
-					dataPath = propsData.dataName;
-				}
-				let objProp = _impress.objectPath(parentComponent, dataPath);
+				if (isPropFromProp === true) {
+					let propsMap = _impress.mapPropToDataOwner(currentComponent, dataPath);
 
-				//check parent for existence of data and set prop observer in child
-				if (objProp != undefined) {
+					if (propsMap == undefined) throw new Error(`iMpress error ---  "${currentComponent.name}" props: ${attributes[i].name}=${attributes[i].value} - does not map to any known data namespace!`);
+
+					dataOwner = propsMap.dataOwner;
+					dataPath = propsMap.dataName;
+					dataPathArray = propsMap.dataPathArray;
+				} else {
+					//normalise the dataPath and dataPathArray
+					dataPathArray = dataPath.match(/[^\[\]\.\{\}]+/g);
+					dataPath = dataPathArray.join('.');
+				}
+				let objProp = _impress.objectPath(dataOwner, dataPath);
+				if (objProp != undefined && objProp.dataObject.hasOwnProperty(objProp.dataProperty)) {
+					//create a map in the child to the parent dataOwner
 					currentComponent._propsMaps[propsName].dataPath = dataPath;
-					currentComponent._propsMaps[propsName].dataPathArray = dataPath.match(/[^\[\]\.\{\}]+/g);
-					currentComponent._propsMaps[propsName].dataOwner = parentComponent;
+					currentComponent._propsMaps[propsName].dataPathArray = dataPathArray;
+					currentComponent._propsMaps[propsName].dataOwner = dataOwner;
+
+					//create an observable map in the dataOwner
+					_impress.createDataObserver(dataOwner, dataPath, currentComponent, propsName);
 				} else {
 					throw new Error(`iMpress error ---  "${currentComponent.name}" props: "${dataPath}" does not exits as data in parent "${parentComponent.name}"\nValue ${attributes[i].name}=${attributes[i].value} not defined in data!`);
 				}
-			}
-		}
-		//for each prop set the textNode Observers
-		_impress.setiPropsTextNodeObserables(currentComponent, iTextNodes);
-	}
-};
-
-/**
- * @private
- * @description
- * sets the props text node observers
- * @param {Object} currentComponent
- * @param {Array} iTextNodes
- */
-_impress.setiPropsTextNodeObserables = (currentComponent, iTextNodes) => {
-	if (iTextNodes.length > 0) {
-		for (let i = 0; i < iTextNodes.length; i++) {
-			let iDataDuplicates = [];
-			let propsMatches = iTextNodes[i].nodeValue.match(/(props\.)[^\}\s]+/g);
-			if (propsMatches == undefined) continue;
-			//Add Observer for data match, avoid duplicates in same node as Observer algoritm replaces all data in any given node
-			for (let n = 0; n < propsMatches.length; n++) {
-				let propsData = _impress.propsToDataNamespaceConversion(currentComponent, propsMatches[n]);
-
-				if (iDataDuplicates.includes(propsData.propsName) === false) {
-					iDataDuplicates.push(propsData.propsName);
-
-					if (propsData != undefined) {
-						let objProp = _impress.objectPath(propsData.dataOwner, propsData.dataPathArray);
-
-						if (objProp == undefined) {
-							throw new Error(`iMpress error ---  <${currentComponent.name} > --- impress module specifies data in template at:\n\n"${iTextNodes[i].nodeValue}"\n\ndata property "${propsMatches[n]}" does not exist!`);
-						} else {
-							let parentComponent = propsData.dataOwner;
-							
-							if (parentComponent._observables[propsData.dataName] == undefined) {
-								parentComponent._observables[propsData.dataName] = {};
-								parentComponent._observables[propsData.dataName].target = [];
-								parentComponent._observables[propsData.dataName].dataName = [];
-							}
-							parentComponent._observables[propsData.dataName].target.push(currentComponent);
-							parentComponent._observables[propsData.dataName].dataName.push(propsData.propsPath);
-
-							if (currentComponent._dataTargets[propsData.propsPath] == undefined) {
-								currentComponent._dataTargets[propsData.propsPath] = {};
-								currentComponent._dataTargets[propsData.propsPath].target = [];
-								currentComponent._dataTargets[propsData.propsPath].replaceText = [];
-							}
-							_impress.addDataObserverTarget(currentComponent, propsData.propsPath, iTextNodes[i]);
-						}
-					} else {
-						//throw
-					}
-				}
+				//TODO do we need to remove props??
+				currentComponent.iNode.removeAttribute(attributes[i].name);
 			}
 		}
 	}
@@ -450,11 +430,10 @@ _impress.setiAttributes = function (currentComponent) {
 					let propsData = _impress.propsToDataNamespaceConversion(currentComponent, v.attributeValue);
 					if (propsData != undefined) {
 						value = _impress.get(propsData.dataOwner, ...propsData.dataPathArray);
-
-						_impress.createDataObserver(propsData.dataOwner, propsData.dataName, false, currentComponent, propsData.propsName);
+						_impress.createDataObserver(propsData.dataOwner, propsData.dataName, currentComponent, propsData.propsName);
 					}
 				} else if (v.attributeValue.indexOf('data.') === 0) {
-					_impress.createDataObserver(currentComponent, v.attributeValue, false);
+					_impress.createDataObserver(currentComponent, v.attributeValue);
 
 					let dataPathArray = v.attributeValue.match(/[^\[\]\.\{\}]+/g);
 					value = _impress.get(currentComponent, ...dataPathArray);
@@ -497,8 +476,8 @@ _impress.setiEvents = function (currentComponent, attrNode, eventAttribute) {
 		argumentArray = argumentArray.replace('()', '').replace('(', ',').replace(')', '').split(',');
 		let listener = jsonKey;
 		//splice off the method leaving just the arguments
-		let fCall = argumentArray[0];
-		argumentArray.splice(0, 1);
+		let fCall = argumentArray[0].trim();
+		argumentArray.shift();
 
 		//add the listener if defined, and call the listener with the arguments once converted from strings into data object of data[argumentArray[index]]
 		if (listener !== undefined) {
@@ -515,18 +494,25 @@ _impress.setiEvents = function (currentComponent, attrNode, eventAttribute) {
 				index--;
 				currentComponent._iEventListener[index].listener = listener;
 				currentComponent._iEventListener[index].handleEvent = (iEventObject) => {
-					let argsToData = argumentArray.map((v) => {
+					let argsToData = [];
+					for (let i = 0, v; (v = argumentArray[i]) !== undefined; i++) {
+						v = v.trim();
 						if (v === '$e' || v === '$event') {
 							v = iEventObject;
 						} else if (v === '$c' || v === '$component') {
 							v = currentComponent;
-						} else if (impressObjects[currentComponent.name].data[v] != undefined) {
-							v = impressObjects[currentComponent.name].data[v];
 						} else if (parseFloat(v) === Number(v)) {
 							v = parseFloat(v);
+						} else if (v.indexOf('data.') === 0) {
+							v = _impress.get(currentComponent, ...v.match(/[^\[\]\.\{\}]+/g));
+						} else if (v.indexOf('props.') === 0) {
+							let propsData = _impress.propsToDataNamespaceConversion(currentComponent, v);
+							if (propsData != undefined) {
+								v = _impress.get(propsData.dataOwner, ...propsData.dataPathArray);
+							}
 						}
-						return v;
-					});
+						argsToData.push(v);
+					}
 					impressObjects[currentComponent.name].methods[fCall](...argsToData);
 				};
 				currentComponent._iEventNodes[index].addEventListener(currentComponent._iEventListener[index].listener, currentComponent._iEventListener[index]);
@@ -547,14 +533,15 @@ _impress.propsToDataNamespaceConversion = (currentComponent, pathString) => {
 	let dataPathArray;
 	let propsName = 'props';
 
-	for (let i = 1, iLen = propsPathArray.length; i < iLen; i++) {
-		if (dataPathArray == undefined) propsName = `${propsName}.${propsPathArray[i]}`;
-		else dataPathArray.push(propsPathArray[i]);
+	for (let i = 1, propPath; (propPath = propsPathArray[i]) !== undefined; i++) {
+		if (dataPathArray == undefined) propsName = `${propsName}.${propPath}`;
+		else dataPathArray.push(propPath);
 
 		if (dataPathArray == undefined && currentComponent._propsMaps[propsName] != undefined) {
 			dataPathArray = currentComponent._propsMaps[propsName].dataPathArray.slice(0);
 		}
 	}
+
 	if (dataPathArray != undefined) return { dataName: dataPathArray.join('.'), dataPathArray: dataPathArray, propsName: propsName, propsPath: pathString, dataOwner: currentComponent._propsMaps[propsName].dataOwner };
 };
 
@@ -568,20 +555,20 @@ _impress.propsToDataNamespaceConversion = (currentComponent, pathString) => {
  * @param {String} pathString
  */
 _impress.setState = (currentComponent, value, pathString) => {
-	if (pathString == undefined){
+	if (pathString == undefined) {
 		let dataKeys = Object.keys(currentComponent._observables);
-		for (let dataKey of dataKeys){
-			let dataPathArray = dataKey.split('.');			
+		for (let dataKey of dataKeys) {
+			let dataPathArray = dataKey.split('.');
 			_impress.refreshData(currentComponent, dataKey, dataPathArray);
 		}
 		let propsKeys = Object.keys(currentComponent._propsMaps);
 		for (let propsKey of propsKeys) {
 			let propsData = _impress.propsToDataNamespaceConversion(currentComponent, propsKey);
-			_impress.refreshData(propsData.dataOwner, propsData.dataName, propsData.dataPathArray);		
+			_impress.refreshData(propsData.dataOwner, propsData.dataName, propsData.dataPathArray);
 		}
 	} else if (pathString === 'props') {
 		let propsKeys = Object.keys(currentComponent._propsMaps);
-		
+
 		for (let propsKey of propsKeys) {
 			let propName = propsKey.replace('props.', '');
 			if (value.hasOwnProperty(propName)) {
@@ -642,10 +629,10 @@ _impress.getState = (currentComponent, pathString) => {
  * @description
  * refreshes all components of an object class
  * would be used only for root object template/data change
- * not currently used!!!
+ * TODO??
  * @param {Object} iObject
  */
-_impress.refreshAll = function (iObject) {
+/*_impress.refreshAll = function (iObject) {
 	let impressObserverTargets = [];
 	let observerTarget;
 
@@ -671,7 +658,7 @@ _impress.refreshAll = function (iObject) {
 			}
 		}
 	}
-};
+};*/
 
 /**
  * @private
@@ -681,26 +668,30 @@ _impress.refreshAll = function (iObject) {
  * @param {Object} currentComponent
  */
 _impress.refreshComponent = function (currentComponent) {
-	let pathStrings = Object.keys(currentComponent._dataTargets);
+	let iObject = impressObjects[currentComponent.name];
+	let pathStrings = Object.keys(iObject._textData);
 
 	for (let pathString of pathStrings) {
-		for (let n = 0; n < currentComponent._dataTargets[pathString].target.length; n++) {
-			let dataOwner, dataPathArray;
+		if (pathString.indexOf('props.') === 0) {
+			//set all props in the template, must be done at component level, albeit it could be cacheable???
+			let propsData = _impress.propsToDataNamespaceConversion(currentComponent, pathString);
+			let value = _impress.get(propsData.dataOwner, ...propsData.dataPathArray);
 
-			if (pathString.indexOf('props.') === 0) {
-				let propsData = _impress.propsToDataNamespaceConversion(currentComponent, pathString);
+			for (let id of iObject._textData[pathString]) {
+				let textNode = currentComponent.iNode.querySelector(`[i-data="${id}"]`);
 
-				dataPathArray = propsData.dataPathArray;
-				dataOwner = propsData.dataOwner;
-			} else {
-				dataPathArray = pathString.match(/[^\[\]\.\{\}]+/g);
-				dataOwner = currentComponent;
+				textNode.textContent = value;
 			}
+		} else if (currentComponent.isMounted === true) {
+			//only refresh data for mounted components as it set in the template for new components
+			let dataPathArray = pathString.match(/[^\[\]\.\{\}]+/g);
+			let value = _impress.get(currentComponent, ...dataPathArray);
 
-			let value = _impress.get(dataOwner, ...dataPathArray);
-			let replaceText = currentComponent._dataTargets[pathString].replaceText[n].replace(`{${pathString}}`, value);
+			for (let id of iObject._textData[pathString]) {
+				let textNode = currentComponent.iNode.querySelector(`[i-data="${id}"]`);
 
-			currentComponent._dataTargets[pathString].target[n].nodeValue = replaceText;
+				textNode.textContent = value;
+			}
 		}
 	}
 };
@@ -719,7 +710,7 @@ _impress.refreshData = (dataOwner, pathString, dataPathArray) => {
 	let observerKeys = Object.keys(dataOwner._observables);
 	let observerNames = observerKeys.filter((v) => v.indexOf(pathString) === 0);
 
-	for (let observerName of observerNames) {
+	for (let i = observerNames.length - 1, observerName; (observerName = observerNames[i]) !== undefined; i--) {
 		//observerName will not equal pathSting when a whole object has been modified
 		if (observerName != pathString) dataPathArray = observerName.split('.');
 
@@ -729,15 +720,31 @@ _impress.refreshData = (dataOwner, pathString, dataPathArray) => {
 		while (i--) {
 			let component = dataOwner._observables[observerName].target[i];
 			let dataName = dataOwner._observables[observerName].dataName[i];
-			let n = component._dataTargets[dataName] != undefined ? component._dataTargets[dataName].target.length : 0;
+			let iObject = impressObjects[component.name];
+			_impress.refreshTextNodes(component, dataName, value);
+			_impress.refreshAttribute(component, dataName, value);
 
-			//set the data to all the dataTargets linking to the observer of the dataOwner
-			while (n--) {
-				let replaceText = component._dataTargets[dataName].replaceText[n].replace(`{${dataName}}`, value);
+			if (typeof iObject.methods.afterUpdated === 'function') iObject.methods.afterUpdated(component, dataName);
+		}
+	}
+};
 
-				component._dataTargets[dataName].target[n].nodeValue = replaceText;
-			}
-			_impress.refreshAttribute(component, dataName);
+/**
+ * @public
+ * @description
+ * refreshes all the text nodes of local dataName mapped to the data owner state change
+ * @param {Objec} component
+ * @param {String} dataName
+ * @param {*} value
+ */
+_impress.refreshTextNodes = (component, dataName, value) => {
+	let iObject = impressObjects[component.name];
+
+	if (iObject._textData[dataName] != undefined) {
+		for (let id of iObject._textData[dataName]) {
+			let textNode = component.iNode.querySelector(`[i-data="${id}"]`);
+
+			textNode.textContent = value;
 		}
 	}
 };
@@ -749,7 +756,7 @@ _impress.refreshData = (dataOwner, pathString, dataPathArray) => {
  * @param {Object} currentComponent
  * @param {String} attrValue
  */
-_impress.refreshAttribute = (currentComponent, attrValue) => {
+_impress.refreshAttribute = (currentComponent, attrValue, value) => {
 	let attributes = impressObjects[currentComponent.name]._attributes;
 
 	for (let i = 0, iLen = attributes.length; i < iLen; i++) {
@@ -758,21 +765,7 @@ _impress.refreshAttribute = (currentComponent, attrValue) => {
 		for (let attribute of vAttributeArray) {
 			//lookup props or data from the relevant observable to the attribute
 
-			if (attrValue.indexOf('props.') === 0) {
-				let propsData = _impress.propsToDataNamespaceConversion(currentComponent, attrValue);
-				if (propsData != undefined) {
-					let value = _impress.get(propsData.dataOwner, ...propsData.dataPathArray);
-					let attrNode = currentComponent.iNode.querySelector(`[i-attribute="${attributes[i]}"]`);
-
-					if (attribute.attributeName === 'value' && attrNode.localName === 'input') {
-						attrNode.value = value;
-					} else {
-						attrNode.setAttribute(attribute.attributeName, value);
-					}
-				}
-			} else if (attrValue.indexOf('data.') === 0) {
-				let dataPathArray = attrValue.match(/[^\[\]\.\{\}]+/g);
-				let value = _impress.get(currentComponent, ...dataPathArray);
+			if (attrValue.indexOf('props.') === 0 || attrValue.indexOf('data.') === 0) {
 				let attrNode = currentComponent.iNode.querySelector(`[i-attribute="${attributes[i]}"]`);
 
 				if (attribute.attributeName === 'value' && attrNode.localName === 'input') {
@@ -836,46 +829,104 @@ _impress.correctHtml = function (template) {
 	}
 };
 
+/**
+ * @private
+ * @description
+ * converts the template string into iMpress HTML
+ * looks for data/props/i-event references and creates an i-attribute lookup reference
+ * tags of the iMpress components e.g. <i-child myProp={data.myData}> do not get converted
+ * we can detect iMpress tags as custom element - hyphenated and they are loaded into the component store
+ * @param {*} iObject
+ * @returns
+ */
 _impress.iAttributesHtml = function (iObject) {
 	let { template, name } = iObject;
+	let data = typeof iObject.data === 'function' ? { data: iObject.data() } : { data: iObject.data };
 	let tempLines;
+	let currentComponentNames = Object.keys(impressObjects);
+	let skipComponentCount = 0;
+
+	let wrapInSpan = function (match) {
+		let _iGuid = _impress.newGUID();
+		let name = match.substring(1, match.length - 1);
+		if (iObject._textData[name] == undefined) iObject._textData[name] = [];
+		iObject._textData[name].push(_iGuid);
+		if (name.indexOf('data.') === 0) {
+			//data is substituted in the object definition
+			let dataPathArray = name.match(/[^\[\]\.\{\}]+/g);
+			let value = _impress.get(data, ...dataPathArray);
+
+			return `<span i-data="${_iGuid}">${value}</span>`;
+		} else {
+			//props cannot be substituted until the propsMap is made
+			return `<span i-data="${_iGuid}">${match}</span>`;
+		}
+	};
+
+	let isComponent = function (tagLine, componentNamesArray, isEndTag = false) {
+		for (let componentName of componentNamesArray) {
+			if (isEndTag === false && tagLine.indexOf(`<${componentName}`) === 0) return true;
+			if (isEndTag === true && tagLine.indexOf(`</${componentName}`) === 0) return true;
+		}
+		return false;
+	};
 
 	tempLines = template.match(/(<[^>]+)>|[^<>]+/g);
+
 	for (let i = 0, tLen = tempLines.length; i < tLen; i++) {
 		let v = tempLines[i];
 
-		if (v[0] === '<' && (v.includes('{props.') || v.includes('{data.') || v.includes('i-event'))) {
-			let tag = v.match(/<[^\s]+/);
-			tag = tag[0].slice(1);
-			//test tagline for attribute match, get new GUID if present, remove attributes from tagline and add to impressAttributes{[]}
-			let attr = v.match(/[^\s]+(?=})}/g);
+		//skip child component content
+		if (skipComponentCount > 0) continue;
 
-			if (attr != undefined && !impressObjects[tag]) {
-				let _iGuid = _impress.newGUID();
-				impressAttributes[_iGuid] = [];
-				let vAttrIndex = 0;
-				let vAttrLength = attr.length;
-				while (vAttrIndex < vAttrLength) {
-					let vAttr = attr[vAttrIndex];
-					let nameValueArray = vAttr.split('=');
+		if (v[0] === '<') {
+			//tag line - first exclude any component tags within a parent template - those are handled by the child
+			if (isComponent(v, currentComponentNames) === true) {
+				skipComponentCount++;
+				if (v.includes('/>')) skipComponentCount--;
+				continue;
+			} else if (isComponent(v, currentComponentNames, true)) {
+				skipComponentCount--;
+				continue;
+			}
+			//identify tags with attributes containing data/props/i-events
+			if (v.includes('{props.') || v.includes('{data.') || v.includes('i-event')) {
+				let tag = v.match(/<[^\s]+/);
+				tag = tag[0].slice(1);
+				//test tagline for attribute match, get new GUID if present, remove attributes from tagline and add to impressAttributes{[]}
+				let attr = v.match(/[a-z-]+={[^}]+}/g);
 
-					//detect JSON or not using ":" test
-					if (nameValueArray[1].includes(':') === false) nameValueArray[1] = nameValueArray[1].substring(1, nameValueArray[1].length - 1);
-					else nameValueArray[1] = JSON.parse(nameValueArray[1]);
-					impressAttributes[_iGuid].push({ attributeName: nameValueArray[0], attributeValue: nameValueArray[1] });
+				if (attr != undefined && !impressObjects[tag]) {
+					let _iGuid = _impress.newGUID();
+					impressAttributes[_iGuid] = [];
+					let vAttrIndex = 0;
+					let vAttrLength = attr.length;
 
-					//replace the attribute in the markup with a reference
-					if (vAttrIndex === 0) {
-						tempLines[i] = tempLines[i].replace(vAttr, `i-attribute="${_iGuid}"`);
-					} else {
-						tempLines[i] = tempLines[i].replace(vAttr, '');
+					while (vAttrIndex < vAttrLength) {
+						let vAttr = attr[vAttrIndex];
+						let nameValueArray = vAttr.split('=');
+
+						//detect JSON or not using ":" test
+						if (nameValueArray[1].includes(':') === false) nameValueArray[1] = nameValueArray[1].substring(1, nameValueArray[1].length - 1);
+						else nameValueArray[1] = JSON.parse(nameValueArray[1]);
+						impressAttributes[_iGuid].push({ attributeName: nameValueArray[0], attributeValue: nameValueArray[1] });
+
+						//replace the attribute in the markup with a reference
+						if (vAttrIndex === 0) {
+							tempLines[i] = tempLines[i].replace(vAttr, `i-attribute="${_iGuid}"`);
+						} else {
+							tempLines[i] = tempLines[i].replace(vAttr, '');
+						}
+						//record the attribute key lookups in iObject._attributes array
+						if (iObject._attributes == undefined) iObject._attributes = [];
+						if (iObject._attributes.includes(_iGuid) === false) iObject._attributes.push(_iGuid);
+						vAttrIndex++;
 					}
-					//record the attribute key lookups in iObject._attributes array
-					if (iObject._attributes == undefined) iObject._attributes = [];
-					if (iObject._attributes.includes(_iGuid) === false) iObject._attributes.push(_iGuid);
-					vAttrIndex++;
 				}
 			}
+		} else if (v.includes('{props.') || v.includes('{data.')) {
+			//tag content - i.e. textline wrap in span
+			tempLines[i] = tempLines[i].replace(/{data\.[^}]+}|{props\.[^}]+}/g, wrapInSpan);
 		}
 	}
 	template = tempLines.reduce((t, c) => (t += c));
@@ -1028,33 +1079,42 @@ const impressComponents = {};
 const impressAttributes = {};
 
 class IMPRESSOBJECT {
-	constructor(name, template = '', data, methods) {
+	constructor(name, template = '', data = {}, methods = {}) {
 		this.name = name;
 		this.data = data;
 		this.methods = methods;
 		this._attributes = [];
-		this.template = _impress.correctHtml(template);
-		this.template = _impress.iAttributesHtml(this);
+		this._textData = {};
+		if (template !== '') {
+			this.template = _impress.correctHtml(template);
+			this.template = _impress.iAttributesHtml(this);
+		} else {
+			this.template = template;
+		}
+		this.templateNode = document.createElement('template');
+		this.templateNode.innerHTML = this.template;
 	}
 }
 
 class IMPRESSCOMPONENT {
-	constructor(iNode, parentComponent) {
+	constructor(iNode) {
 		let iObject = impressObjects[iNode.localName];
 		this.iGuid = _impress.newGUID();
 		this.iNode = iNode;
 		this.name = iNode.localName;
-		this.iParent = parentComponent;
 		this.iChildren = [];
 		this.iRoot = this.iParent == undefined ? this : this.iParent.iRoot;
 		this.data = typeof iObject.data === 'function' ? iObject.data() : _impress.deepClone(iObject.data);
-		this.hasMounted = false;
+		this.isMounted = false;
 		//make below private?
 		this._iEventNodes = [];
 		this._iEventListener = [];
-		this._dataTargets = {};
-		this._observables = {}; //observables obverse only data, props are observed in the true dataOwner
 		this._propsMaps = {};
+		this._observables = {};
+		this._dataMaps = {};
+		impressComponents[this.iGuid] = this;
+		this.iNode.setAttribute('i-guid', this.iGuid);
+		this.iParent = _impress.findParentComponentByNode(this.iNode);
 	}
 
 	setState(value, pathString) {
@@ -1076,3 +1136,85 @@ class IMPRESSCOMPONENT {
 		}
 	}
 }
+
+//IN-BUILT COMPONENTS
+
+//I-FOR
+let iForMethods = {
+	beforeCreate: ($c) => {
+		$c.iNode.innerHTML = '';
+	},
+	afterMounted: ($c) => {
+		let props = $c.getProps();
+
+		let propsKeys = Object.keys($c._propsMaps);
+		$c.data.propsPassThroughs = [];
+		for (let propsKey of propsKeys) {
+			if (propsKey !== 'props.component' && propsKey !== 'props.iterator') {
+				$c.data.propsPassThroughs.push(`${propsKey.replace('props.', '')}={${propsKey}}`);
+			}
+		}
+		$c.data.propsPassThroughs = $c.data.propsPassThroughs.join(' ');
+		if (props.component == undefined) $c.data.componentName = $c.iNode.getAttribute('component');
+		else $c.data.componentName = props.component;
+		_iFor.methods.iForChildrenRefresh($c, props.iterator, $c.data.componentName);
+	},
+	childMoved: ($c, $child) => {
+		if ($child.name !== $c.data.componentName || $child.iNode.parentNode !== $c.iNode) {
+			//delete external children appended in or appended out of an i-for
+			IMPRESS.destroyComponent($child);
+		} else {
+			//document.querySelector('i-for').appendChild(document.querySelector('i-child'));
+			let childNodes = Array.from($c.iNode.querySelectorAll($c.data.componentName));
+			let fromIndex = $c.iChildren.indexOf($child);
+			let toIndex = childNodes.indexOf($child.iNode);
+			let iteratorData = _impress.get($c._propsMaps['props.iterator'].dataOwner, ...$c._propsMaps['props.iterator'].dataPathArray);
+
+			iteratorData.splice(toIndex, 0, ...iteratorData.splice(fromIndex, 1));
+			$c.iChildren.splice(toIndex, 0, ...$c.iChildren.splice(fromIndex, 1));
+			//correct the _propsMaps and dataOwner _observables based on appended order
+			for (let i = 0, iChild; (iChild = $c.iChildren[i]) !== undefined; i++) {
+				let propsMap = iChild._propsMaps['props.item'];
+				let dataPath = propsMap.dataPath;
+				let targetIndex = propsMap.dataOwner._observables[propsMap.dataPath].target.indexOf(iChild);
+				//remove existing observable
+				propsMap.dataOwner._observables[dataPath].target.splice(targetIndex, 1);
+				propsMap.dataOwner._observables[dataPath].dataName.splice(targetIndex, 1);
+				//construct new data path and push new observable
+				propsMap.dataPathArray[propsMap.dataPathArray.length - 1] = i;
+				propsMap.dataPath = propsMap.dataPathArray.join('.');
+				propsMap.dataOwner._observables[propsMap.dataPath].target.push(iChild);
+				propsMap.dataOwner._observables[propsMap.dataPath].dataName.push('props.item');
+			}
+		}
+	},
+	afterUpdated: ($c, dataPath) => {
+		switch (dataPath) {
+			case 'props.iterator':
+				let iterator = $c.getProps('props.iterator');
+				_iFor.methods.iForChildrenRefresh($c, iterator, $c.data.componentName);
+				break;
+		}
+	},
+	iForChildrenRefresh: ($c, iterator, componentName) => {
+		if ($c.iChildren.length === iterator.length) {
+			return;
+		} else if ($c.iChildren.length < iterator.length) {
+			let html = '';
+			for (let i = $c.iChildren.length, item; (item = iterator[i]) !== undefined; i++) {
+				html += `<${componentName} item={props.iterator[${i}]} ${$c.data.propsPassThroughs}></${componentName}>`;
+			}
+			$c.iNode.insertAdjacentHTML('beforeend', html);
+		} else {
+			for (let i = $c.iChildren.length - 1; i >= iterator.length; i--) {
+				IMPRESS.destroyComponent($c.iChildren[i]);
+			}
+		}
+	}
+};
+const _iFor = IMPRESS.create('i-for', undefined, undefined, iForMethods);
+//I-FOR
+
+//console.log('impressObjects', impressObjects);
+//console.log('impressComponents', impressComponents);
+//console.log('impressAttributes', impressAttributes);
