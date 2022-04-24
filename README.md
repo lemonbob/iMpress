@@ -4,22 +4,23 @@
 
 There are many frameworks available for supposedly assisting in web development, some are current, many have fallen from favour. The current most popular frameworks are ReactJS, Angular, VueJS - all of which use a Virtual DOM. Claims circulate the web about the virtues of the Virtual DOM. However, most of the claims are false. Many of the claims centre around avoiding repaints and supposedly batching updates to improve speed. The fact is that modern browsers already batch updates - called the render tree - browsers do this at high speed in native code. The claim that a Javascript difference engine can outperform native code is absurd. Indeed, independent tests have repeatedly shown that Virtual DOM based frameworks slow optimum web performance by a factor up to 100-fold. 
 
-There was a time for these frameworks pre-ES6 (2015) when Javascript lacked performance and lacked unit build tools - modules - but the state of technology has moved on. The Virtual DOM was never a benefit; it was a programming requirement when these frameworks were originally built. It was necessary to capture lifecycle events - create/mount/destroy/update etc - but these events are now native to HTML Custom Elements making a clumsy heavy weight Virtual DOM obsolete.   
+There was a time for these frameworks pre-ES6 (2015) when Javascript lacked performance and lacked unit build tools - modules - but the state of technology has moved on. The Virtual DOM was never a benefit; it was a programming requirement when these frameworks were originally built. It was necessary to capture lifecycle events - create/mount/destroy/update etc - but these events are now native to HTML Custom Elements making a clumsy Virtual DOM obsolete.   
 
-So where does that leave frameworks? Frameworks only have one benefit, state management - supposedly making it easy to maintain the view with the model using a MVVM architecture. However, with project scaling it becomes quickly apparent that MVVM (with reactive getters and setters) causes more problems than it solves. State management is actually poorly handled by existing frameworks in anything but the simplest of cases. The Flux pattern evolved and Redux/Vuex were added to solve these issues, but caused even more problems. Netflix have gone to great expense to remove frameworks because of poor performance. GitHub removed JQuery and went framework free citing technical debt.
+So where does that leave frameworks? Frameworks only have one benefit, state management - supposedly making it easier to maintain the view with the model using a MVVM architecture. However, with project scaling it becomes quickly apparent that MVVM can causes more problems than it solves. State management is actually poorly handled by existing frameworks in anything but the simplest of cases. The "Flux" pattern evolved and Redux/Vuex were added to solve these issues, but caused even more problems. Netflix have gone to great expense to remove frameworks because of poor performance. GitHub removed JQuery and went framework free citing technical debt.
 
-iMpress is different - it is a high-speed lightweight wrapper for HTML Custom Elements. iMpress is a tool for rapid web development built the way frameworks were truly intended - a View layer to be used with whatever data architecture or model, such as MVC, that meets the requirements of the platform whatever the size or scale. It is upto 400 times faster than Vue 3, and makes use of HTML Custom Elements in ES6 modules. It is designed to allow the coder to be in control, and allows programmers the freedom to code in a technical debt free environment using modern Javascript. Benefits of iMpress are:
+iMpress is different - it is a high-speed lightweight wrapper for HTML Custom Elements. iMpress is a tool for rapid web development built the way frameworks were truly intended - a View layer to be used with whatever data architecture or model, such as MVC, that meets the requirements of the platform. It is upto 1000 times faster than Vue 3, and makes use of HTML Custom Elements in ES6 modules. It is designed to allow the coder to be in control, and allows programmers the freedom to code in a technical debt free environment using modern Javascript. Benefits of iMpress are:
 
 - Uses native support, no Virtual DOM, no more technical debt!
-- Data acess upto 400x faster than Vue3 and other frameworks.
-- Method calls run upto 100x faster than Vue3 and other frameworks.
-- Component creation/destruction as fast as the fastest frameworks.
+- Data acess upto 400x faster than Vue3.
+- Method calls run upto 100x faster than Vue3.
+- Component creation/destruction as fast as the fastest frameworks and much faster when using large method section components.
+- Reactive data updates upto 1000x faster than Vue3 and 10x faster than React
 - Memory usage is a fraction of the size of other frameworks, typically 5-10 times smaller.
 - Component code length is more concise, upto 20% smaller codebase.
-- Props are handled correctly and are truly immutable.
+- Props are handled correctly as name spaced representations of data, and are immutable.
 - Synchonous code, no more waiting for "nextTick" or components to mount.
-- Or use async in your life cycle methods, if desired, you are in full control.
-- Server-side and dynamic templates.
+- Use async in your life cycle methods, if desired, you are in full control.
+- Server-side and dynamic templates, native portals and slots.
 - No need for eventbus/emits/context API/sending class props — use the in-built custom query engine.
 - NO PROXYS, NO REACTIVE SETTERS (data Vuetation) — data models can be handled externally or using MVC methodology without problems.
 
@@ -28,7 +29,7 @@ In engine terms, ReactJS, Angular, VueJS are steam powered monsters — albeit w
 ## iMpress
 
 
-To use - 
+To use - see examples - (also see "i-for" pre-built component)
 
 1. create an ES6 module
 
@@ -95,4 +96,4 @@ No more contrived usage of class props to pass mutation methods throughout a sys
 
 14. All Custom Element components must be hyphenated e.g. my-app, shopping-cart, address-form etc. 
 
-## upto 400 times faster than ReactJS, Vue and Angular
+## upto 1000 times faster than ReactJS, Vue and Angular
