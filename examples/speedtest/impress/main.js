@@ -47,7 +47,7 @@ let data = () => {
 		inputvalue: 'test',
 		style: 'margin-top:10px',
 		time: '',
-		testObj: [{value: 'DAVE'},{value: 'HAL'}],
+		testObj: [{value: 'FOO'},{value: 'bar'}],
 		componentArray: []
 	};
 };
