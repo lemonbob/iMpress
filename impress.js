@@ -1214,7 +1214,3 @@ let iForMethods = {
 };
 const _iFor = IMPRESS.create('i-for', undefined, undefined, iForMethods);
 //I-FOR
-
-//console.log('impressObjects', impressObjects);
-//console.log('impressComponents', impressComponents);
-//console.log('impressAttributes', impressAttributes);
