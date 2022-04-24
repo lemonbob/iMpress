@@ -40,7 +40,6 @@ let template = /*html*/ `
 </div>
 `;
 
-//<i-child item={data.testObj[0].value} testdata={data.inputvalue}></i-child>
 let data = () => {
 	return {
 		title: 'iMpress',
