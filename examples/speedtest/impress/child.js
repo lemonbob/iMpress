@@ -11,7 +11,7 @@ const template = /*html*/ `
 
 let data = () => {
 	return {
-		testData: 'mike'
+		testData: 'foo'
 	};
 };
 
