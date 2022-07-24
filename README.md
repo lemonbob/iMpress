@@ -44,8 +44,8 @@ data = {
 4. set the methods e.g.
 ```
 methods = {
-   customMethod: () => {
-   //your code
+   customMethod: function(){
+   //your code - this.data contains the data object, this._i is the internal impress object holding the name, iNode, observers, and propMaps
    }
 ```
 5. set the template as a string literal or import HTML file via AJAX e.g.
@@ -63,28 +63,30 @@ let iapp = IMPRESS.create("i-app", template, data, methods);
 {data.title}
 ```
 
-8. methods are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string
+8. methods are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string. Specify params, data.property/props.property etc. $e or $event is the event object, or if no params are specified the event object will be the first param.
 ```
-i-event={"click":"customMethod($e,$component)"}
+i-event={"click":"customMethod"}
 ```
-
-Four special arguments are allowed in event handler methods:
-
-i. $e or $event for the event object
-
-ii. $c or $component for the component
 
 9. Props are passed via React-like methods
 ```
 <i-child title={data.title}></i-child>
 ```
 
-10. Props are not mutable. They exist only as namespaces for the child component to access the true owner of the data. Props when properly conceived are not local data, nor should they ever be considered as local data. To modify a prop, internally a propsMap contains data references to the true owner of the data, a setState method on each component can be used to request mutation and records a full log of where the data was changed.
+10. Props are not mutable. They exist only as mapped namespaces for the child component to access the true owner of the data. Props when properly conceived are not local data, nor should they ever be considered as local data. To modify a prop, internally a propsMap contains data references to the true owner of the data, a setState method on each component can be used to request mutation and records a full log of where the data was changed.
 ```
-$c.setState(value, 'props.title');
+this.setState('props.title', newValue);
 ```
 No more contrived usage of class props to pass mutation methods throughout a system as is common in React.
 
+11. An observer can be defined to observer any props or data object
+```
+observers : {
+   'data.array':function(newVal, oldVal){
+   
+   }
+}
+```
 11. In-built query methods allow robust and debuggable communication between parent/child/siblings. No more eventbus/emits/contextAPI needed.
 
 12. All methods exist on the object base, not as class instance methods. Consequently memory usage is a fraction the size of most frameworks. Methods receive the component instance as a parameter in order to access data and update state, this results in extremely fast performance. Pass in the instance as $c, or retrive the instance via the DOM node or i-guid attribute and the internal query methods.
@@ -94,6 +96,6 @@ No more contrived usage of class props to pass mutation methods throughout a sys
 <i-app></i-app> 
 ```
 
-14. All Custom Element components must be hyphenated e.g. my-app, shopping-cart, address-form etc. 
+14. All Custom Element components must be hyphenated with one hyphen e.g. my-app, shopping-cart, address-form etc. 
 
 ## upto 1000 times faster than ReactJS, Vue and Angular
