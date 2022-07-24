@@ -53,9 +53,15 @@ methods = {
 template = `<h1 class="my_class">{data.title} custom elements <em>high speed</em><strong> framework</strong> demonstration</h1>`
 ```
 
-6. declare a variable with the argument as the Custom Element tag you want to create (all Custom Elements must be hyphenated) and call the IMPRESS.create method, passing in the template, data and methods as parameters (or defined as arguments): e.g. 
+6. declare a variable with the argument as the Custom Element tag you want to create (all Custom Elements must be hyphenated) and call the IMPRESS.create method, passing in a definition object with the name and one or more of template, data, methods, observers, e.g. 
 ```
-let iapp = IMPRESS.create("i-app", template, data, methods);
+let iapp = IMPRESS.create({
+	name: 'i-app',
+	template: template, //String
+	data: data, //Object or function returning and object
+	methods: methods, //Object of functions
+   observers: observers //Object of functions
+});
 ```
 
 7. data is used in the HTML in curly braces either as attributes or content e.g.
