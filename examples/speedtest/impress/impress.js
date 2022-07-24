@@ -18,32 +18,33 @@ export default IMPRESS;
  * @param {String} name
  * @returns
  */
-IMPRESS.create = (name, template, data = {}, methods = {}) => {
-	name = name.toLowerCase();
+IMPRESS.create = (impressDefinitionObject) => {
+	if (impressDefinitionObject.name == undefined) throw new Error(`iMpress error ---  components must have a name property`);
+	impressDefinitionObject.name = impressDefinitionObject.name.toLowerCase();
 
-	if (impressObjects[name] == undefined) {
-		impressObjects[name] = new IMPRESSOBJECT(name, template, data, methods);
+	if (impressObjects.get(impressDefinitionObject.name) == undefined) {
+		impressObjects.set(impressDefinitionObject.name, new IMPRESSOBJECT(impressDefinitionObject));
 		//Callbacks to define HTML custom Element
 		customElements.define(
-			name,
+			impressDefinitionObject.name,
 			class extends HTMLElement {
 				constructor() {
 					super();
-					this.classList.add('i-style');
-					_impress.addComponent(this);
+					//this.classList.add('i-style');
+					//_impress.addComponent(this);
 				}
 				//Callback when components gets added to the DOM - "connected"
-				//connectedCallback() {
-				//	_impress.connectComponent(this);
-				//}
+				connectedCallback() {
+					_impress.connectComponent(this);
+				}
 				disconnectedCallback() {
 					_impress.disconnectComponent(this);
 				}
 			}
 		);
-		return impressObjects[name];
+		return impressObjects.get(impressDefinitionObject.name);
 	} else {
-		throw new Error(`iMpress error ---  "${name}" impressComponent is already defined! Check modules for naming conflict`);
+		throw new Error(`iMpress error ---  "${impressDefinitionObject.name}" impressComponent is already defined! Check modules for naming conflict`);
 	}
 };
 
@@ -57,25 +58,24 @@ IMPRESS.deepClone = (source, optionsObject = {}) => {
 IMPRESS.getComponentByNode = (targetNode) => {
 	if (targetNode != undefined) {
 		let iGuid = targetNode.getAttribute('i-guid');
-		return impressComponents[iGuid];
+		return impressComponents.get(iGuid);
 	}
 };
 
 IMPRESS.getComponentById = (iGuid) => {
-	return impressComponents[iGuid];
+	return impressComponents.get(iGuid);
 };
 
 IMPRESS.getComponentsByName = (name) => {
 	let componentArray = [];
-	let componentGuidKeys = Object.keys(impressComponents);
-	for (let i = 0, component; (component = impressComponents[componentGuidKeys[i]]) !== undefined; i++) {
-		if (component.name === name) componentArray.push(component);
-	}
+	impressComponents.forEach((component, iGuid) => {
+		if (component._impressInternal.name === name) componentArray.push(component);
+	});
 	return componentArray;
 };
 
 IMPRESS.destroyComponent = (component) => {
-	component.iNode.parentNode.removeChild(component.iNode);
+	component._impressInternal.iNode.parentNode.removeChild(component._impressInternal.iNode);
 };
 
 IMPRESS.queryComponent = (component, queryString) => {
@@ -105,33 +105,34 @@ const _impress = {};
 let _iGuid = 1000;
 
 //CONSTRUCTOR METHODS
-_impress.addComponent = (thisNode) => {
+/*_impress.addComponent = (thisNode) => {
 	let currentComponent = new IMPRESSCOMPONENT(thisNode);
 
-	if (currentComponent.iParent != undefined) {
-		currentComponent.iParent.iChildren.push(currentComponent);
-		if (currentComponent.iParent.isMounted === true) _impress.createComponent(currentComponent);
+	if (currentComponent._impressInternal.iParent != undefined) {
+		currentComponent._impressInternal.iParent.iChildren.push(currentComponent);
+		if (currentComponent._impressInternal.iParent._impressInternal.isMounted === true) _impress.createComponent(currentComponent);
 	} else {
 		_impress.createComponent(currentComponent);
 	}
-};
+};*/
 
-/*_impress.connectComponent = (thisNode) => {
-	let name = thisNode.localName;
-	let currentComponent = IMPRESS.getComponentByNode(thisNode, name);
+_impress.connectComponent = (thisNode) => {
+	if (thisNode.isConnected === false) return;
+	let iGuid = thisNode.getAttribute('i-guid');
+	let currentComponent = impressComponents.get(iGuid);
 
-	if (currentComponent.isMounted === false) {
-		//console.log('connectedCallback - mounted false', currentComponent.name);
-	} else {
-		let iObject = impressObjects[name];
-		console.log('connectedCallback - appended', currentComponent.name, currentComponent.iNode.isConnected);
-		//TODO refresh - i-for data if appened
-		//TODO what do we do about the parent and props of appended i-for nodes moved outside of the i-for structure???
-		if (typeof iObject.methods.afterAppend === 'function') {
-			iObject.methods.afterAppend(currentComponent);
+	//create component on first connection only
+	if (currentComponent == undefined) {
+		let currentComponent = new IMPRESSCOMPONENT(thisNode);
+
+		if (currentComponent._impressInternal.iParent != undefined) {
+			currentComponent._impressInternal.iParent._impressInternal.iChildren.push(currentComponent);
+			if (currentComponent._impressInternal.iParent._impressInternal.isMounted === true) _impress.createComponent(currentComponent);
+		} else {
+			_impress.createComponent(currentComponent);
 		}
 	}
-};*/
+};
 
 /**
  * @private
@@ -141,33 +142,36 @@ _impress.addComponent = (thisNode) => {
  *
  */
 _impress.createComponent = async (currentComponent) => {
-	let iObject = impressObjects[currentComponent.name];
+	let iObject = impressObjects.get(currentComponent._impressInternal.name);
 
-	if (typeof iObject.methods.beforeCreate === 'function') await iObject.methods.beforeCreate(currentComponent);
+	if (typeof currentComponent.beforeCreate === 'function') await currentComponent.beforeCreate(currentComponent);
 	//let iGuidTemplate = iObject.template.replace(/i-attribute="/g, `i-attribute="${currentComponent.iGuid}-`);
 
-	//currentComponent.iNode.innerHTML = iObject.template;
-	currentComponent.iNode.appendChild(iObject.templateNode.content.cloneNode(true));
+	currentComponent._impressInternal.iNode.appendChild(iObject.templateNode.content.cloneNode(true));
 
-	_impress.setiProps(currentComponent);
-	_impress.setiData(currentComponent);
-	_impress.setiAttributes(currentComponent);
-	_impress.refreshComponent(currentComponent);
+	_impress.setiPropsMaps(currentComponent);
+	_impress.setiReactiveMaps(currentComponent);
+	_impress.setiEventMaps(currentComponent);
+
 	//component has mounted
-	currentComponent.isMounted = true;
+	currentComponent._impressInternal.isMounted = true;
+	if (typeof currentComponent.afterMounted === 'function') await currentComponent.afterMounted(currentComponent);
 
-	if (typeof iObject.methods.afterMounted === 'function') await iObject.methods.afterMounted(currentComponent);
-
-	for (let n = 0; n < currentComponent.iChildren.length; n++) {
-		_impress.createComponent(currentComponent.iChildren[n]);
+	for (let n = 0; n < currentComponent._impressInternal.iChildren.length; n++) {
+		_impress.createComponent(currentComponent._impressInternal.iChildren[n]);
 	}
 };
 
+/**
+ * finds a parent component by Node search
+ * @param {Object} thisNode
+ * @returns
+ */
 _impress.findParentComponentByNode = function (thisNode) {
 	let parentNode = thisNode.parentNode;
 	let parentName = parentNode.localName;
 
-	while (parentNode.localName !== 'body' && impressObjects[parentName] === undefined) {
+	while (parentNode.localName !== 'body' && impressObjects.get(parentName) === undefined) {
 		parentNode = parentNode.parentNode;
 		parentName = parentNode.localName;
 	}
@@ -186,28 +190,28 @@ _impress.disconnectComponent = async (thisNode) => {
 	//appended nodes are still connected - do not destroy them
 	let name = thisNode.localName;
 	let iGuid = thisNode.getAttribute('i-guid');
-	let currentComponent = impressComponents[iGuid];
+	let currentComponent = impressComponents.get(iGuid);
 
 	//if component node is still connected it has been appended
 	if (currentComponent == undefined) return;
 
 	//if the node is still connected, the component has been appened/added somewhere else in the DOM
 	if (thisNode.isConnected === true) {
-		let iObject = impressObjects[name];
-		let parentComponent = currentComponent.iParent;
-		if (typeof iObject.methods.afterMove === 'function') iObject.methods.afterMove(currentComponent);
-		if (parentComponent != undefined && typeof impressObjects[parentComponent.name].methods.childMoved === 'function') impressObjects[parentComponent.name].methods.childMoved(parentComponent, currentComponent);
+		let parentComponent = currentComponent._impressInternal.iParent;
+
+		if (typeof currentComponent.afterPortedFrom === 'function') await currentComponent.afterPorted();
+		if (parentComponent != undefined && typeof parentComponent.afterPorted === 'function') await parentComponent.afterPorted(currentComponent);
 		return;
 	}
 	//TODO destroy all children - asycn promise issue
 	//create a flattened array of the component tree starting from the currentComponent
-	if (currentComponent.iChildren[0] === undefined) {
+	if (currentComponent._impressInternal.iChildren[0] === undefined) {
 		_impress.destroyComponent(currentComponent);
 	} else {
 		let componentArray = [currentComponent];
 		let j = 0;
 		while (componentArray[j] !== undefined) {
-			componentArray.push(...componentArray[j].iChildren);
+			componentArray.push(...componentArray[j]._impressInternal.iChildren);
 			j++;
 		}
 		//loop backwards and destroy all the components
@@ -218,50 +222,48 @@ _impress.disconnectComponent = async (thisNode) => {
 };
 
 _impress.destroyComponent = async (currentComponent) => {
-	let name = currentComponent.name;
-	let iObject = impressObjects[name];
+	if (typeof currentComponent.beforeDestroy === 'function') await currentComponent.beforeDestroy(currentComponent);
+	//remove iChildren references in parent - TODO convert iChildren to Map
+	if (currentComponent._impressInternal.iParent != undefined) {
+		let childIndex = currentComponent._impressInternal.iParent._impressInternal.iChildren.indexOf(currentComponent);
+		if (childIndex !== -1) currentComponent._impressInternal.iParent._impressInternal.iChildren.splice(childIndex, 1);
+	}
+	//remove dataOwner links to child - linked via the resolvedPath and component object as a map
+	currentComponent._impressInternal.propsMaps.forEach((propsMap, propName) => {
+		let dataPath = propsMap.resolvedPath;
 
-	if (typeof iObject.methods.beforeDestroy === 'function') await iObject.methods.beforeDestroy(currentComponent);
-	//remove iChildren references in parent
-	if (currentComponent.iParent != undefined) {
-		let childIndex = currentComponent.iParent.iChildren.indexOf(currentComponent);
-		if (childIndex !== -1) currentComponent.iParent.iChildren.splice(childIndex, 1);
-	}
-	//remove dataOwner links to child
-	let propsKeys = Object.keys(currentComponent._propsMaps);
-	for (let propsKey of propsKeys) {
-		let propsMap = currentComponent._propsMaps[propsKey];
-		let observableIndex = propsMap.dataOwner._observables[propsMap.dataPath].target.indexOf(currentComponent);
-		if (observableIndex !== -1) {
-			if (propsMap.dataOwner._observables[propsMap.dataPath].target[1] !== undefined) {
-				propsMap.dataOwner._observables[propsMap.dataPath].target.splice(observableIndex, 1);
-				propsMap.dataOwner._observables[propsMap.dataPath].dataName.splice(observableIndex, 1);
-			} else {
-				delete propsMap.dataOwner._observables[propsMap.dataPath];
-			}
+		if (propsMap.dataOwner._impressInternal.observables.has(dataPath)) {
+			let dataMap = propsMap.dataOwner._impressInternal.observables.get(dataPath);
+			if (dataMap.has(currentComponent)) dataMap.delete(currentComponent);
+			if (dataMap.size === 0) propsMap.dataOwner._impressInternal.observables.delete(dataPath);
 		}
-	}
+	});
 	//remove all listeners
-	for (let index = 0; index < currentComponent._iEventNodes.length; index++) {
-		currentComponent._iEventNodes[index].removeEventListener(currentComponent._iEventListener[index].listener, currentComponent._iEventListener[index]);
+	for (let index = 0; index < currentComponent._impressInternal.iEventNodes.length; index++) {
+		currentComponent._impressInternal.iEventNodes[index].removeEventListener(currentComponent._impressInternal.iEventListener[index].listener, currentComponent._impressInternal.iEventListener[index]);
 	}
-	if (typeof iObject.methods.destroyed === 'function') await iObject.methods.destroyed(currentComponent);
+	if (typeof currentComponent.afterDestroy === 'function') await currentComponent.afterDestroy(currentComponent);
 	//ported nodes are not in their parent component - they must be removed manually
-	if (currentComponent.iNode.isConnected === true) {
-		let iNode = currentComponent.iNode;
-		delete impressComponents[currentComponent.iGuid];
+	if (currentComponent._impressInternal.iNode.isConnected === true) {
+		let iNode = currentComponent._impressInternal.iNode;
+		impressComponents.delete(currentComponent._impressInternal.iGuid);
 		iNode.parentNode.removeChild(iNode);
 	} else {
-		delete impressComponents[currentComponent.iGuid];
+		impressComponents.delete(currentComponent._impressInternal.iGuid);
 	}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 //DATA OBSERVER FUNCTIONS
 
+/**
+ * NOT USED
+ * @param {Object} currentComponent
+ * @returns
+ */
 _impress.getTextNodes = (currentComponent) => {
 	let iTextNodes = [];
-	let treeWalker = document.createNodeIterator(currentComponent.iNode, NodeFilter.SHOW_TEXT, (node) => {
+	let treeWalker = document.createNodeIterator(currentComponent._impressInternal.iNode, NodeFilter.SHOW_TEXT, (node) => {
 		return node.nodeValue.includes('{data.') || node.nodeValue.includes('{props.') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
 	});
 	let n;
@@ -274,173 +276,156 @@ _impress.getTextNodes = (currentComponent) => {
 /**
  * @private
  * @description
- * sets any data observables to the component
- * scans the text nodes in the template and adds targets for the observables
- * TODO
- * @param {Object} currentComponent
- */
-_impress.setiData = function (currentComponent) {
-	let iObject = impressObjects[currentComponent.name];
-	let pathStrings = Object.keys(iObject._textData);
-
-	for (let pathString of pathStrings) {
-		if (pathString.indexOf('data.') === 0) {
-			_impress.createDataObserver(currentComponent, pathString);
-		} else {
-			let propsData = _impress.propsToDataNamespaceConversion(currentComponent, pathString);
-			_impress.createDataObserver(propsData.dataOwner, propsData.dataName, currentComponent, propsData.propsName);
-		}
-	}
-};
-
-/**
- * @private
- * @description
  * sets the data observers on the current component
  * @param {Object} currentComponent
  * @param {String} dataPath
  */
-_impress.createDataObserver = (currentComponent, dataPath, dataTarget = currentComponent, dataName = dataPath) => {
-	if (currentComponent._observables[dataPath] == undefined) {
-		currentComponent._observables[dataPath] = {};
-		currentComponent._observables[dataPath].target = [];
-		currentComponent._observables[dataPath].dataName = [];
-	}
-	if (currentComponent._observables[dataPath].target.includes(dataTarget) === false) {
-		currentComponent._observables[dataPath].target.push(dataTarget);
-		currentComponent._observables[dataPath].dataName.push(dataName);
-	}
-};
+_impress.createDataObserver2 = (currentComponent, dataPath, dataTarget = currentComponent, mapValue) => {
+	if (currentComponent._impressInternal.observables.has(dataPath) === false) {
+		if (mapValue != undefined) currentComponent._impressInternal.observables.set(dataPath, new Map([[dataTarget, [mapValue]]]));
+		else currentComponent._impressInternal.observables.set(dataPath, new Map([[dataTarget, []]]));
+	} else {
+		if (currentComponent._impressInternal.observables.get(dataPath).has(dataTarget) === false) {
+			if (mapValue != undefined) currentComponent._impressInternal.observables.get(dataPath).set(dataTarget, [mapValue]);
+			else currentComponent._impressInternal.observables.get(dataPath).set(dataTarget, []);
+		} else if (mapValue != undefined) {
+			let observerArray = currentComponent._impressInternal.observables.get(dataPath).get(dataTarget);
 
-_impress.mapPropToDataOwner = (currentComponent, pathString) => {
-	let propsPathArray = pathString.match(/[^\[\]\.\{\}]+/g);
-	let dataPathArray;
-	let propsName = 'props';
-
-	for (let i = 1, pathPart; (pathPart = propsPathArray[i]) !== undefined; i++) {
-		if (dataPathArray == undefined) propsName = `${propsName}.${pathPart}`;
-		else dataPathArray.push(pathPart);
-
-		if (dataPathArray == undefined && currentComponent.iParent._propsMaps[propsName] != undefined) {
-			dataPathArray = currentComponent.iParent._propsMaps[propsName].dataPathArray.slice(0);
+			if (observerArray.indexOf(mapValue) === -1) currentComponent._impressInternal.observables.get(dataPath).get(dataTarget).push(mapValue);
 		}
 	}
-
-	if (dataPathArray != undefined) return { dataName: dataPathArray.join('.'), dataPathArray: dataPathArray, propsName: propsName, propsPath: pathString, dataOwner: currentComponent.iParent._propsMaps[propsName].dataOwner };
 };
+
+//PROPS
+
+/**
+ * TODO
+ * Maps props to data and sets observers on the dataOwner
+ * @param {Object} currentComponent
+ */
+_impress.setiPropsMaps = (currentComponent) => {
+	let attributes = currentComponent._impressInternal.iNode.attributes;
+	let parentComponent = currentComponent._impressInternal.iParent;
+	if (parentComponent != undefined) {
+		for (let attribute of attributes) {
+			if (attribute.value.indexOf('{data.') === 0 || attribute.value.indexOf('{props.') === 0) {
+				let propsName = 'props.' + attribute.name;
+				let dataPath = attribute.value.substring(1, attribute.value.length - 1);
+
+				let propsMap = _impress.getLookupDataMap(parentComponent, dataPath, _impress.newGUID(), propsName);
+
+				if (currentComponent._impressInternal.propsMaps.has(propsName) === false) {
+					currentComponent._impressInternal.propsMaps.set(propsName, propsMap);
+					_impress.createDataObserver2(propsMap.dataOwner, propsMap.resolvedPath, currentComponent, propsMap);
+				} else {
+					throw new Error(`iMpress error ---  prop: "${propsName}" has been declared twice on component: "${currentComponent._impressInternal.name}"`);
+				}
+			}
+			//currentComponent._impressInternal.iNode.removeAttribute(attribute.name);
+		}
+	}
+};
+
+//REACTIVE DATA
 
 /**
  * @private
  * @description
- * component props constructor method - links the dataOwner of the prop via nameSpace lookup
- * props are detailed in the tag of the Custom Element child component, once set they are removed from the DOM
- * only props and i-for attributes can be added to the tag of a Custom Element child component
- * i-events and other attributes are invalid on Custom Element child components
- * adds observer for the props in the data owner observables structure
+ * sets data. and prop. observables to the component for text <span> nodes
+ * scans the text nodes in the template and adds targets for the observables
+ * TODO - NEW
  * @param {Object} currentComponent
  */
-_impress.setiProps = (currentComponent) => {
-	let attributes = currentComponent.iNode.attributes;
-	let dataOwner = currentComponent.iParent;
-	let isComponentPassedProps = false;
+_impress.setiReactiveMaps = (currentComponent) => {
+	let iObject = impressObjects.get(currentComponent._impressInternal.name);
 
-	for (let attribute of attributes) {
-		if (attribute.value.indexOf('{props.') === 0 || attribute.value.indexOf('{data.') === 0) {
-			isComponentPassedProps = true;
-			break;
-		}
-	}
+	iObject._ireactive.forEach((reactiveMap, key) => {
+		if (reactiveMap.resolvedPath != undefined) {
+			//if path is resolved it contains only data - contains no props
+			let clonedLookup = _impress.deepClone(reactiveMap);
 
-	if (dataOwner !== undefined && isComponentPassedProps === true) {
-		//set props definitions passed into component in its attribute tag
-		let i = attributes.length;
-		while (i--) {
-			//restrict searched attributes to ones with {data.xxx} or {props.xxx}. You can pass props by "prop drilling".
-			let isPropFromData = attributes[i].value.indexOf('{data.') === 0;
-			let isPropFromProp = attributes[i].value.indexOf('{props.') === 0;
-			if (isPropFromData === true || isPropFromProp === true) {
-				//define the props name based on the attribute name
-				let propsName = 'props.' + attributes[i].name;
-
-				//create propsTargets object if it doesn't exist
-				if (currentComponent._propsMaps[propsName] == undefined) currentComponent._propsMaps[propsName] = {};
-
-				//find the ultimate owner of the data - i.e. is the from data or a prop from a prop
-				let dataPath = attributes[i].value.replace(/[{}]/g, '');
-				let dataPathArray;
-				//nested props - decode namespace transformations to find true data owner and path
-				if (isPropFromProp === true) {
-					let propsMap = _impress.mapPropToDataOwner(currentComponent, dataPath);
-
-					if (propsMap == undefined) throw new Error(`iMpress error ---  "${currentComponent.name}" props: ${attributes[i].name}=${attributes[i].value} - does not map to any known data namespace!`);
-
-					dataOwner = propsMap.dataOwner;
-					dataPath = propsMap.dataName;
-					dataPathArray = propsMap.dataPathArray;
+			clonedLookup.dataOwner = currentComponent;
+			_impress.createDataObserver2(currentComponent, clonedLookup.resolvedPath, currentComponent, clonedLookup);
+			clonedLookup.lookupMap.forEach((value) => {
+				value.dataOwner = currentComponent;
+				_impress.createDataObserver2(currentComponent, value.observable, currentComponent, clonedLookup);
+			});
+			_impress.setReactiveDataToDOM(currentComponent, clonedLookup, true, true);
+		} else {
+			//props and mixed data props lookups
+			if (reactiveMap.dataPath === reactiveMap.rootPath) {
+				//if the rootPath is the same as the dataPath we must have a pure propsMap
+				let propName = reactiveMap.rootPath;
+				//the observable will already have been created in setiPropsMaps, push in the id of the text/attribute to observe
+				if (currentComponent._impressInternal.propsMaps.has(propName) === true) {
+					let observedPropsMap = currentComponent._impressInternal.propsMaps.get(propName);
+					observedPropsMap.id.push(...reactiveMap.id);
+					_impress.setReactiveDataToDOM(currentComponent, observedPropsMap, true);
 				} else {
-					//normalise the dataPath and dataPathArray
-					dataPathArray = dataPath.match(/[^\[\]\.\{\}]+/g);
-					dataPath = dataPathArray.join('.');
+					throw new Error(`iMpress error ---  prop: "${propName}" is not defined on component: "${currentComponent._impressInternal.name}"`);
 				}
-				let objProp = _impress.objectPath(dataOwner, dataPath);
-				if (objProp != undefined && objProp.dataObject.hasOwnProperty(objProp.dataProperty)) {
-					//create a map in the child to the parent dataOwner
-					currentComponent._propsMaps[propsName].dataPath = dataPath;
-					currentComponent._propsMaps[propsName].dataPathArray = dataPathArray;
-					currentComponent._propsMaps[propsName].dataOwner = dataOwner;
+			} else {
+				// the lookup is a mix of data and props. The root of data or prop
+				let clonedLookup = _impress.deepClone(reactiveMap);
 
-					//create an observable map in the dataOwner
-					_impress.createDataObserver(dataOwner, dataPath, currentComponent, propsName);
-				} else {
-					throw new Error(`iMpress error ---  "${currentComponent.name}" props: "${dataPath}" does not exits as data in parent "${parentComponent.name}"\nValue ${attributes[i].name}=${attributes[i].value} not defined in data!`);
+				if (currentComponent._impressInternal.propsMaps.has(reactiveMap.rootPath) === true) {
+					//root paths matches a prop
+					let propName = reactiveMap.rootPath;
+					let propsMap = currentComponent._impressInternal.propsMaps.get(propName);
+
+					clonedLookup.dataPath = clonedLookup.dataPath.replace(propName, propsMap.dataPath);
+					clonedLookup.dataOwner = propsMap.dataOwner;
 				}
-				//TODO do we need to remove props??
-				currentComponent.iNode.removeAttribute(attributes[i].name);
+				//TODO
+				clonedLookup.lookupMap.forEach((lookup, key) => {
+					//resolve the sub-lookup maps which can be data or props
+					if (lookup.dataPath[0] === 'd') {
+						if (lookup.dataOwner == undefined) lookup.dataOwner = currentComponent;
+					} else {
+						if (currentComponent._impressInternal.propsMaps.has(lookup.dataPath) === true) {
+							let propsMap = currentComponent._impressInternal.propsMaps.get(lookup.dataPath);
+							lookup.dataOwner = propsMap.dataOwner;
+							lookup.dataPath = propsMap.dataPath;
+							lookup.observable = propsMap.rootPath;
+
+							if (lookup.value == undefined) lookup.value = _impress.getValueFromLookup(lookup.dataOwner, lookup.dataPath, clonedLookup.lookupMap);
+							propsMap.lookupMap.forEach((propLookup, guid) => {
+								clonedLookup.lookupMap.set(guid, propLookup);
+							});
+							//TODO loop the lookup map of the propsmap and add to this lookup
+						} else {
+							throw new Error(`iMpress error ---  prop: "${lookup.observable}" is not defined on component: "${currentComponent._impressInternal.name}"`);
+						}
+					}
+					if (lookup.value == undefined) lookup.value = _impress.getValueFromLookup(lookup.dataOwner, lookup.dataPath, clonedLookup.lookupMap);
+					_impress.createDataObserver2(lookup.dataOwner, lookup.observable, currentComponent, clonedLookup);
+				});
+				if (clonedLookup.value == undefined) clonedLookup.value = _impress.getValueFromLookup(clonedLookup.dataOwner, clonedLookup.dataPath, clonedLookup.lookupMap);
+				if (clonedLookup.resolvedPath == undefined) clonedLookup.resolvedPath = _impress.getResolvedPath(clonedLookup.dataPath, clonedLookup.lookupMap);
+
+				_impress.createDataObserver2(clonedLookup.dataOwner, clonedLookup.resolvedPath, currentComponent, clonedLookup);
+				_impress.setReactiveDataToDOM(currentComponent, clonedLookup, true);
 			}
 		}
-	}
+	});
 };
 
-///////////////////////////////////
-//ATTRIBUTES
-
 /**
- * @private
- * @description
- * Sets an observer for the attribute if it doesn't exit
- * Sets the attribute to the value of the observer
- * @param {Object} currentComponent
+ * sets a lookup map of reactive data to the DOM nodes in the id array of the map
+ * @param {Object} lookup
  */
-_impress.setiAttributes = function (currentComponent) {
-	let iObject = impressObjects[currentComponent.name];
-
-	for (let index = 0, iLen = iObject._attributes.length; index < iLen; index++) {
-		let iAttrIndex = iObject._attributes[index];
-		let attrNode = currentComponent.iNode.querySelector(`[i-attribute="${iAttrIndex}"]`);
-		if (attrNode == undefined) continue;
-
-		let n = impressAttributes[iAttrIndex].length;
-		while (n--) {
-			let v = impressAttributes[iAttrIndex][n];
-
-			if (v.attributeName !== 'i-event') {
-				let value;
-
-				if (v.attributeValue.indexOf('props.') === 0) {
-					let propsData = _impress.propsToDataNamespaceConversion(currentComponent, v.attributeValue);
-					if (propsData != undefined) {
-						value = _impress.get(propsData.dataOwner, ...propsData.dataPathArray);
-						_impress.createDataObserver(propsData.dataOwner, propsData.dataName, currentComponent, propsData.propsName);
-					}
-				} else if (v.attributeValue.indexOf('data.') === 0) {
-					_impress.createDataObserver(currentComponent, v.attributeValue);
-
-					let dataPathArray = v.attributeValue.match(/[^\[\]\.\{\}]+/g);
-					value = _impress.get(currentComponent, ...dataPathArray);
-				}
-				attrNode.setAttribute(v.attributeName, value);
-			} else {
-				_impress.setiEvents(currentComponent, attrNode, v);
+_impress.setReactiveDataToDOM = (currentComponent, lookup, isFirstSet = false, isSetAttributeOnly = false) => {
+	for (let id of lookup.id) {
+		if (id.name === 'TEXT') {
+			if (isSetAttributeOnly === false) {
+				let iNode = currentComponent._impressInternal.iNode.querySelector(`[i-data="${id.iGuid}"]`);
+				if (iNode != undefined) iNode.textContent = lookup.value;
+			}
+		} else if (id.name.substring(0, 6) !== 'props.') {
+			let iNode = currentComponent._impressInternal.iNode.querySelector(`[i-attribute="${id.iGuid}"]`);
+			if (iNode != undefined) {
+				if (isFirstSet === false && id.name === 'value' && iNode.localName === 'input') iNode.value = lookup.value;
+				else iNode.setAttribute(id.name, lookup.value);
 			}
 		}
 	}
@@ -448,102 +433,59 @@ _impress.setiAttributes = function (currentComponent) {
 
 ////////////////////////////////////////////////////////////////////////////////
 //IEVENTS//
-//setiEvents on template object
-_impress.handleEvent = function (iEventObject, argumentArray) {
-	let argsToData = argumentArray.map((v) => {
-		if (v === '$e' || v === '$event') {
-			v = iEventObject;
-		} else if (v === '$parent') {
-			v = currentComponent.iParent;
-		} else if (v === '$component') {
-			v = currentComponent;
-		} else if (impressObjects[currentComponent.name].data[v] !== undefined) {
-			v = impressObjects[currentComponent.name].data[v];
-		}
-		return v;
-	});
-	impressObjects[currentComponent.name].methods[fCall](...argsToData);
-};
 
-_impress.setiEvents = function (currentComponent, attrNode, eventAttribute) {
-	let nodeIndex = currentComponent._iEventNodes.push(attrNode);
-	nodeIndex--;
-	let jsonData = eventAttribute.attributeValue; //impressAttributes[iAttrIndex][n].attributeValue;
+/**
+ * loops through the iEventMap and registers the eveng listeners for the component
+ * @param {Object} currentComponent
+ */
+_impress.setiEventMaps = function (currentComponent) {
+	let iObject = impressObjects.get(currentComponent._impressInternal.name);
 
-	for (let jsonKey in jsonData) {
-		let argumentArray = jsonData[jsonKey];
-		//destructure the string, remove empty brackets, convert first bracket to "," if contains arguments, remove second bracket, split to CSV
-		argumentArray = argumentArray.replace('()', '').replace('(', ',').replace(')', '').split(',');
-		let listener = jsonKey;
-		//splice off the method leaving just the arguments
-		let fCall = argumentArray[0].trim();
-		argumentArray.shift();
+	iObject._ievents.forEach((eventMap, iGuid) => {
+		let eventNode = currentComponent._impressInternal.iNode.querySelector(`[i-attribute="${iGuid}"]`);
 
-		//add the listener if defined, and call the listener with the arguments once converted from strings into data object of data[argumentArray[index]]
-		if (listener !== undefined) {
-			if (impressObjects[currentComponent.name][fCall]) {
-				//check if method is impressObjects prototype method
+		eventMap.forEach((iEventArray, listener) => {
+			for (let iEvent of iEventArray) {
+				let fn = iEvent[0];
+				let args = iEvent.slice(1);
 
-				currentComponent._iEventNodes[nodeIndex].addEventListener(listener, () => {
-					currentComponent[fCall](...argumentArray);
-				});
-			} else if (impressObjects[currentComponent.name].methods[fCall] !== undefined) {
-				//check if method is iObject custom method
+				if (typeof currentComponent[fn] == 'function') {
+					let index = currentComponent._impressInternal.iEventListener.push({});
 
-				let index = currentComponent._iEventListener.push({});
-				index--;
-				currentComponent._iEventListener[index].listener = listener;
-				currentComponent._iEventListener[index].handleEvent = (iEventObject) => {
-					let argsToData = [];
-					for (let i = 0, v; (v = argumentArray[i]) !== undefined; i++) {
-						v = v.trim();
-						if (v === '$e' || v === '$event') {
-							v = iEventObject;
-						} else if (v === '$c' || v === '$component') {
-							v = currentComponent;
-						} else if (parseFloat(v) === Number(v)) {
-							v = parseFloat(v);
-						} else if (v.indexOf('data.') === 0) {
-							v = _impress.get(currentComponent, ...v.match(/[^\[\]\.\{\}]+/g));
-						} else if (v.indexOf('props.') === 0) {
-							let propsData = _impress.propsToDataNamespaceConversion(currentComponent, v);
-							if (propsData != undefined) {
-								v = _impress.get(propsData.dataOwner, ...propsData.dataPathArray);
+					index--;
+					currentComponent._impressInternal.iEventListener[index].listener = listener;
+					currentComponent._impressInternal.iEventListener[index].handleEvent = (e) => {
+						let argsToData = [];
+
+						for (let i = 0, v; (v = args[i]) !== undefined; i++) {
+							if (v === '$e' || v === '$event') {
+								v = e;
+							} else if (v === '$c' || v === '$component') {
+								v = currentComponent;
+							} else if (parseFloat(v) === Number(v)) {
+								v = parseFloat(v);
+							} else if (v === 'true' || v === 'false') {
+								v = Boolean(v);
+							} else if (v.indexOf('data.') === 0 || v.indexOf('props.') === 0) {
+								let lookup = _impress.getLookupDataMap(currentComponent, v, null, 'EVENTHANDLER');
+								v = lookup.value;
 							}
+							argsToData.push(v);
 						}
-						argsToData.push(v);
-					}
-					impressObjects[currentComponent.name].methods[fCall](...argsToData);
-				};
-				currentComponent._iEventNodes[index].addEventListener(currentComponent._iEventListener[index].listener, currentComponent._iEventListener[index]);
-			} else {
-				throw new Error(`iMpress warning ---  i-event "${listener}" method ${fCall}() is undefined in "${currentComponent.name}"`);
+						currentComponent[fn](...argsToData);
+					};
+					eventNode.addEventListener(listener, currentComponent._impressInternal.iEventListener[index]);
+				} else {
+					//finally throw an error is a matching method cannot be found on either the component or its prototype
+					throw new Error(`iMpress warning ---  i-event "${listener}" method ${fn}() is not declared in "${currentComponent._impressInternal.name}" or on the prototype`);
+				}
 			}
-		} else {
-			throw new Error(`iMpress error --- no listener on i-event object at:\n${currentComponent.name}\ni-event attribute only accepts correctly formatted JSON string data\nwhere "key":"value" pairs correspond to listener and module method respectively`);
-		}
-	}
+		});
+	});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 //UPDATE STATE//
-
-_impress.propsToDataNamespaceConversion = (currentComponent, pathString) => {
-	let propsPathArray = pathString.match(/[^\[\]\.\{\}]+/g);
-	let dataPathArray;
-	let propsName = 'props';
-
-	for (let i = 1, propPath; (propPath = propsPathArray[i]) !== undefined; i++) {
-		if (dataPathArray == undefined) propsName = `${propsName}.${propPath}`;
-		else dataPathArray.push(propPath);
-
-		if (dataPathArray == undefined && currentComponent._propsMaps[propsName] != undefined) {
-			dataPathArray = currentComponent._propsMaps[propsName].dataPathArray.slice(0);
-		}
-	}
-
-	if (dataPathArray != undefined) return { dataName: dataPathArray.join('.'), dataPathArray: dataPathArray, propsName: propsName, propsPath: pathString, dataOwner: currentComponent._propsMaps[propsName].dataOwner };
-};
 
 /**
  * @private
@@ -551,148 +493,38 @@ _impress.propsToDataNamespaceConversion = (currentComponent, pathString) => {
  * Sets data or props state
  * props are mapped to data owner
  * @param {Object} currentComponent
- * @param {*} value
  * @param {String} pathString
  */
-_impress.setState = (currentComponent, value, pathString) => {
-	if (pathString == undefined) {
-		let dataKeys = Object.keys(currentComponent._observables);
-		for (let dataKey of dataKeys) {
-			let dataPathArray = dataKey.split('.');
-			_impress.refreshData(currentComponent, dataKey, dataPathArray);
-		}
-		let propsKeys = Object.keys(currentComponent._propsMaps);
-		for (let propsKey of propsKeys) {
-			let propsData = _impress.propsToDataNamespaceConversion(currentComponent, propsKey);
-			_impress.refreshData(propsData.dataOwner, propsData.dataName, propsData.dataPathArray);
-		}
-	} else if (pathString === 'props') {
-		let propsKeys = Object.keys(currentComponent._propsMaps);
-
-		for (let propsKey of propsKeys) {
-			let propName = propsKey.replace('props.', '');
-			if (value.hasOwnProperty(propName)) {
-				let propsData = _impress.propsToDataNamespaceConversion(currentComponent, propsKey);
-
-				if (propsData != undefined) {
-					_impress.set(value[propName], propsData.dataOwner, ...propsData.dataPathArray);
-					_impress.refreshData(propsData.dataOwner, propsData.dataName, propsData.dataPathArray);
-				}
-			}
-		}
-	} else if (pathString.indexOf('props.') === 0) {
-		let propsData = _impress.propsToDataNamespaceConversion(currentComponent, pathString);
-
-		if (propsData != undefined) {
-			_impress.set(value, propsData.dataOwner, ...propsData.dataPathArray);
-			_impress.refreshData(propsData.dataOwner, propsData.dataName, propsData.dataPathArray);
-		} else {
-			throw new Error(`iMpress error ---  <${currentComponent.name} > --- props: ${pathString} are not defined!`);
-		}
-	} else if (pathString.indexOf('data.') === 0) {
-		let dataPathArray = pathString.match(/[^\[\]\.\{\}]+/g);
-
-		_impress.set(value, currentComponent, ...dataPathArray);
-		_impress.refreshData(currentComponent, pathString, dataPathArray);
+_impress.setState = (currentComponent, pathString, value) => {
+	if (pathString === 'data' || pathString == undefined) {
+		currentComponent._impressInternal.observables.forEach((dataLookup, dataPath) => {
+			_impress.refreshData(dataLookup, dataPath);
+		});
 	}
-};
-
-/**
- * @private
- * @description
- * gets data or props state
- * props are mapped to data owner
- * used mainly for props as data is accessible via owner
- * @param {Object} currentComponent
- * @param {String} pathString
- * @returns {*}
- */
-_impress.getState = (currentComponent, pathString) => {
+	if (pathString === 'props' || pathString == undefined) {
+		currentComponent._impressInternal.propsMaps.forEach((propsMap, propsKey) => {
+			propsMap.dataOwner._impressInternal.observables.forEach((dataLookup, dataPath) => {
+				if (dataPath.indexOf(propsMap.resolvedPath) === 0) _impress.refreshData(dataLookup, dataPath);
+			});
+		});
+	}
 	if (pathString.indexOf('props.') === 0) {
-		let propsData = _impress.propsToDataNamespaceConversion(currentComponent, pathString);
+		let propsMap = currentComponent._impressInternal.propsMaps.get(pathString);
+		//if a value is given, sets the value to the data owner
+		if (value.length > 0) {
+			let dataPathArray = propsMap.resolvedPath.match(/[^\[\]\.\{\}]+/g);
+			let lastPath = dataPathArray.pop();
+			let dataObject = dataPathArray.reduce((acc, cur) => (acc = acc?.[cur]), propsMap.dataOwner);
 
-		if (propsData != undefined) {
-			return _impress.get(propsData.dataOwner, ...propsData.dataPathArray);
-		} else {
-			throw new Error(`iMpress error ---  <${currentComponent.name} > --- props: ${pathString} are not defined!`);
+			if (dataObject != undefined) dataObject[lastPath] = value[0];
 		}
+		propsMap.dataOwner._impressInternal.observables.forEach((dataLookup, dataPath) => {
+			if (dataPath.indexOf(propsMap.resolvedPath) === 0) _impress.refreshData(dataLookup, dataPath);
+		});
 	} else if (pathString.indexOf('data.') === 0) {
-		let dataPathArray = pathString.match(/[^\[\]\.\{\}]+/g);
-
-		return _impress.get(currentComponent, ...dataPathArray);
-	}
-};
-
-//refresh screen data for all components of impressObject type (used at initial load)
-/**
- * @private
- * @description
- * refreshes all components of an object class
- * would be used only for root object template/data change
- * TODO??
- * @param {Object} iObject
- */
-/*_impress.refreshAll = function (iObject) {
-	let impressObserverTargets = [];
-	let observerTarget;
-
-	for (let keyString in iObject._observables) {
-		for (let i = 0; i < iObject._observables[keyString].target.length; i++) {
-			observerTarget = undefined;
-			if (iObject._observables[keyString].dataName[i].indexOf('props.') === 0) {
-				observerTarget = iObject._observables[keyString].target[i].propsTargets[iObject._observables[keyString].dataName[i]];
-			}
-			if (iObject._observables[keyString].dataName[i].indexOf('data.') === 0) {
-				observerTarget = iObject._observables[keyString].target[i]._dataTargets[iObject._observables[keyString].dataName[i]];
-			}
-			if (observerTarget) {
-				for (let n = 0; n < observerTarget.target.length; n++) {
-					if (impressObserverTargets.indexOf(observerTarget.target[n]) === -1) {
-						let dataPathArray = keyString.match(/[^\[\]\.\{\}]+/g);
-						let value = _impress.get(iObject, ...dataPathArray);
-						let replaceText = observerTarget.replaceText[n].replace(`{${keyString}}`, value);
-						observerTarget.target[n].nodeValue = replaceText;
-						impressObserverTargets.push(observerTarget.target[n]);
-					}
-				}
-			}
-		}
-	}
-};*/
-
-/**
- * @private
- * @description
- * refresh screen data for single component
- * first load - (used when dynamically adding component)
- * @param {Object} currentComponent
- */
-_impress.refreshComponent = function (currentComponent) {
-	let iObject = impressObjects[currentComponent.name];
-	let pathStrings = Object.keys(iObject._textData);
-
-	for (let pathString of pathStrings) {
-		if (pathString.indexOf('props.') === 0) {
-			//set all props in the template, must be done at component level, albeit it could be cacheable???
-			let propsData = _impress.propsToDataNamespaceConversion(currentComponent, pathString);
-			let value = _impress.get(propsData.dataOwner, ...propsData.dataPathArray);
-
-			for (let id of iObject._textData[pathString]) {
-				let textNode = currentComponent.iNode.querySelector(`[i-data="${id}"]`);
-
-				textNode.textContent = value;
-			}
-		} else if (currentComponent.isMounted === true) {
-			//only refresh data for mounted components as it set in the template for new components
-			let dataPathArray = pathString.match(/[^\[\]\.\{\}]+/g);
-			let value = _impress.get(currentComponent, ...dataPathArray);
-
-			for (let id of iObject._textData[pathString]) {
-				let textNode = currentComponent.iNode.querySelector(`[i-data="${id}"]`);
-
-				textNode.textContent = value;
-			}
-		}
+		currentComponent._impressInternal.observables.forEach((dataLookup, dataPath) => {
+			if (dataPath.indexOf(pathString) === 0) _impress.refreshData(dataLookup, dataPath);
+		});
 	}
 };
 
@@ -700,53 +532,63 @@ _impress.refreshComponent = function (currentComponent) {
  * @private
  * @description
  * Called by setState to refresh an individual component data
- * @param {Object} component
- * @param {String} pathString
- * @param {Array} dataPathArray
+ * TODO!!!
+ * @param {Object} lookup
+ * @param {String} dataPath e.g data.array.0
  */
-_impress.refreshData = (dataOwner, pathString, dataPathArray) => {
-	if (dataOwner == undefined) return;
+_impress.refreshData = (lookup, dataPath) => {
+	//TODO
+	//console.log('REFRESH');
+	//console.log(dataPath, lookup);
 
-	let observerKeys = Object.keys(dataOwner._observables);
-	let observerNames = observerKeys.filter((v) => v.indexOf(pathString) === 0);
+	lookup.forEach((dataMaps, dataTarget) => {
+		for (let i = 0, dataMap; (dataMap = dataMaps[i]) !== undefined; i++) {
+			//change the resolved path is the lookup has changed - this happens with a compound prop or data lookup i.e. props.array[props.index]
+			let previousValue = dataMap.value;
 
-	for (let i = observerNames.length - 1, observerName; (observerName = observerNames[i]) !== undefined; i--) {
-		//observerName will not equal pathSting when a whole object has been modified
-		if (observerName != pathString) dataPathArray = observerName.split('.');
-
-		let i = dataOwner._observables[observerName].target.length;
-		let value = _impress.get(dataOwner, ...dataPathArray);
-
-		while (i--) {
-			let component = dataOwner._observables[observerName].target[i];
-			let dataName = dataOwner._observables[observerName].dataName[i];
-			let iObject = impressObjects[component.name];
-			_impress.refreshTextNodes(component, dataName, value);
-			_impress.refreshAttribute(component, dataName, value);
-
-			if (typeof iObject.methods.afterUpdated === 'function') iObject.methods.afterUpdated(component, dataName);
+			if (dataPath !== dataMap.rootPath) {
+				let oldResolvedPath = dataMap.resolvedPath;
+				_impress.refreshLookupDataMap(dataMap);
+				if (dataMap.resolvedPath !== oldResolvedPath && dataMap.dataOwner._impressInternal.observables.has(oldResolvedPath)) {
+					let observer = dataMap.dataOwner._impressInternal.observables.get(oldResolvedPath);
+					dataMap.dataOwner._impressInternal.observables.delete(oldResolvedPath);
+					dataMap.dataOwner._impressInternal.observables.set(dataMap.resolvedPath, observer);
+				}
+			}
+			//dataMap values based on object previosuValue === newValue as mutation of object reference - no deepCloning is done
+			let value = _impress.getValueFromLookup(dataMap.dataOwner, dataMap.dataPath, dataMap.lookupMap);
+			dataMap.value = value;
+			let i = dataMap.id.length;
+			while (i--) {
+				let id = dataMap.id[i];
+				if (id.name === 'TEXT') {
+					if (previousValue !== value) _impress.refreshTextNodes(dataTarget, id.iGuid, value);
+					_impress.refreshTextNodes(dataTarget, id.iGuid, value);
+				} else if (id.name.substring(0, 6) !== 'props.') {
+					_impress.refreshAttribute(dataTarget, id.iGuid, id.name, value);
+				} else {
+					//id.name is "props.?" - call any observers
+					if (typeof dataTarget._impressInternal.observers[id.name] === 'function') dataTarget._impressInternal.observers[id.name].call(dataTarget, value, previousValue);
+					if (typeof dataTarget.afterUpdated === 'function') dataTarget.afterUpdated();
+				}
+			}
+			if (typeof dataMap.dataOwner._impressInternal.observers[dataPath] === 'function') dataTarget._impressInternal.observers[dataPath].call(dataTarget, value, previousValue);
+			if (typeof dataMap.dataOwner.afterUpdated === 'function') dataMap.dataOwner.afterUpdated();
 		}
-	}
+	});
 };
 
 /**
  * @public
  * @description
  * refreshes all the text nodes of local dataName mapped to the data owner state change
- * @param {Objec} component
- * @param {String} dataName
+ * @param {Object} component
+ * @param {String} iGuid
  * @param {*} value
  */
-_impress.refreshTextNodes = (component, dataName, value) => {
-	let iObject = impressObjects[component.name];
-
-	if (iObject._textData[dataName] != undefined) {
-		for (let id of iObject._textData[dataName]) {
-			let textNode = component.iNode.querySelector(`[i-data="${id}"]`);
-
-			textNode.textContent = value;
-		}
-	}
+_impress.refreshTextNodes = (component, iGuid, value) => {
+	let textNode = component._impressInternal.iNode.querySelector(`[i-data="${iGuid}"]`);
+	textNode.textContent = value;
 };
 
 /**
@@ -754,32 +596,160 @@ _impress.refreshTextNodes = (component, dataName, value) => {
  * @description
  * refreshes an attribute - called by refresh data
  * @param {Object} currentComponent
- * @param {String} attrValue
+ * @param {String} iGuid
+ * @param {String} name
+ * @param {*} value
  */
-_impress.refreshAttribute = (currentComponent, attrValue, value) => {
-	let attributes = impressObjects[currentComponent.name]._attributes;
+_impress.refreshAttribute = (currentComponent, iGuid, name, value) => {
+	let attrNode = currentComponent._impressInternal.iNode.querySelector(`[i-attribute="${iGuid}"]`);
 
-	for (let i = 0, iLen = attributes.length; i < iLen; i++) {
-		let vAttributeArray = impressAttributes[attributes[i]].filter((v) => v.attributeValue === attrValue);
-
-		for (let attribute of vAttributeArray) {
-			//lookup props or data from the relevant observable to the attribute
-
-			if (attrValue.indexOf('props.') === 0 || attrValue.indexOf('data.') === 0) {
-				let attrNode = currentComponent.iNode.querySelector(`[i-attribute="${attributes[i]}"]`);
-
-				if (attribute.attributeName === 'value' && attrNode.localName === 'input') {
-					attrNode.value = value;
-				} else {
-					attrNode.setAttribute(attribute.attributeName, value);
-				}
-			}
-		}
-	}
+	if (name === 'value' && attrNode.localName === 'input') attrNode.value = value;
+	else attrNode.setAttribute(name, value);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 //HELPER FUNCTIONS — conversion of template strings to Objects
+
+//NEW
+/**
+ * gets the ultimate value of a dataPath from the lookupMap
+ * @param {Object} currentComponent
+ * @param {String} dataPath
+ * @param {Map} lookupMap
+ * @returns
+ */
+_impress.getValueFromLookup = (currentComponent, dataPath, lookupMap) => {
+	let dataPathArray = dataPath.match(/[^\[\]\.\{\}]+/g);
+	let value = dataPathArray.reduce((acc, cur) => (acc = cur[0] !== '#' ? acc?.[cur] : acc?.[lookupMap.get(cur)?.value]), currentComponent);
+	return value;
+};
+
+/**
+ * Resolves a path removing nesting into original data when the value of the lookups has been determined
+ * @param {*} currentComponent
+ * @param {*} dataPath
+ * @param {*} lookupMap
+ * @returns
+ */
+_impress.getResolvedPath = (dataPath, lookupMap) => {
+	let resolvedPath = dataPath.replace(/(\[)(#[^\]]+)(\])/g, (lookup, p1, p2) => `.${lookupMap.get(p2)?.value}`);
+	return resolvedPath;
+};
+
+/**
+ * refreshes s lookup object data map
+ * @param {Object} lookup
+ */
+_impress.refreshLookupDataMap = (reactiveMap) => {
+	reactiveMap.lookupMap.forEach((lookupMap, iGuid) => {
+		lookupMap.value = _impress.getValueFromLookup(lookupMap.dataOwner, lookupMap.dataPath, lookupMap);
+	});
+	reactiveMap.value = _impress.getValueFromLookup(reactiveMap.dataOwner, reactiveMap.dataPath, reactiveMap.lookupMap);
+	reactiveMap.resolvedPath = _impress.getResolvedPath(reactiveMap.dataPath, reactiveMap.lookupMap);
+};
+
+/**
+ * gets a data lookup map of a dataPath string
+ * decodes nested paths into linear paths and constructs a lookup array chain
+ * @param {Object} currentComponent
+ * @param {String} str
+ * @returns {Object}
+ */
+_impress.getLookupDataMap = (currentComponent, str, iGuid, name = 'TEXT') => {
+	let i = 0;
+	let nestedDataStartIndexes = [];
+	let lookupMap = new Map();
+
+	//first loop - find indexes in the string of data. and props.
+	while (i++ < str.length) {
+		let nestedDataIndex = str.indexOf('[data.', i);
+		let nestedPropsIndex = str.indexOf('[props.', i);
+		if (nestedDataIndex === -1) nestedDataIndex = Infinity;
+		if (nestedPropsIndex === -1) nestedPropsIndex = Infinity;
+		//find index of closing "]"
+		if (nestedDataIndex < nestedPropsIndex) {
+			i = nestedDataIndex + 1;
+			nestedDataStartIndexes.push(i);
+		} else if (nestedPropsIndex < nestedDataIndex) {
+			i = nestedPropsIndex + 1;
+			nestedDataStartIndexes.push(i);
+		}
+	}
+
+	//isResolvableValue is only true for a dataPath that contains no props - these are immediately resolvable
+	let isResolvableValue = name.substring(0, 6) === 'props.' || name === 'EVENTHANDLER' || (str.includes('[props.') === false && str.indexOf('props.') !== 0) ? true : false;
+	let dataOwner = currentComponent?._impressInternal?.iNode != undefined ? currentComponent : undefined;
+
+	//second loop backwards and replace the nested data with lookups
+	for (let j = nestedDataStartIndexes.length - 1, startIndex; (startIndex = nestedDataStartIndexes[j]) !== undefined; j--) {
+		let i = startIndex;
+		let endIndex = 0;
+		let bracketCount = 0;
+
+		while (i++ < str.length && endIndex === 0) {
+			if (str[i] === ']') {
+				if (bracketCount === 0) {
+					endIndex = i;
+					let newGuid = _impress.newGUID();
+					let dataPath = str.substring(startIndex, endIndex);
+					let value;
+					let observable = dataPath.replace(/\[.*/, '');
+					let subdataOwner = dataOwner;
+
+					if (dataOwner == undefined) {
+						if (dataPath[0] === 'd' && dataPath.includes('[#') === false) value = _impress.getValueFromLookup(currentComponent, dataPath, lookupMap);
+					} else {
+						if (dataPath[0] === 'd') {
+							value = _impress.getValueFromLookup(currentComponent, dataPath, lookupMap);
+						} else if (dataPath[0] === 'p') {
+							//switch the propsMap for the true dataMap
+							let propsMap = dataOwner._impressInternal.propsMaps.get(dataPath);
+
+							dataPath = dataPath.replace(observable, propsMap.resolvedPath);
+							observable = dataPath.replace(/\[.*/, '');
+							subdataOwner = propsMap.dataOwner;
+							value = propsMap.value;
+						}
+					}
+
+					lookupMap.set(newGuid, { dataPath: dataPath, observable: observable, dataOwner: subdataOwner, value: value });
+					str = `${str.slice(0, startIndex)}${newGuid}${str.slice(endIndex)}`;
+				} else {
+					bracketCount--;
+				}
+			} else if (str[i] === '[') {
+				bracketCount++;
+			}
+		}
+	}
+	//set to undefined or 'not-resolved'
+	let value = undefined;
+	let resolvedPath = undefined;
+	let rootPath = str.replace(/\[.*/, '');
+	let reactiveMap = { id: [{ iGuid: iGuid, name: name }], dataPath: str, dataOwner: dataOwner, rootPath: rootPath, resolvedPath: resolvedPath, lookupMap: lookupMap, value: value };
+
+	if (isResolvableValue === true) {
+		if (reactiveMap.rootPath[0] === 'p') {
+			let propsName = reactiveMap.rootPath;
+
+			if (reactiveMap.dataOwner._impressInternal.propsMaps.has(propsName)) {
+				let parentPropsMap = reactiveMap.dataOwner._impressInternal.propsMaps.get(propsName);
+				reactiveMap.dataOwner = parentPropsMap.dataOwner;
+				reactiveMap.dataPath = reactiveMap.dataPath.replace(reactiveMap.rootPath, parentPropsMap.rootPath);
+				reactiveMap.rootPath = parentPropsMap.rootPath;
+			} else {
+				throw new Error(`iMpress error ---  prop: "${propsName}" been passed into: "${currentComponent._impressInternal.name} but does not exist on "${parentComponent._impressInternal.name}"`);
+			}
+			value = _impress.getValueFromLookup(reactiveMap.dataOwner, reactiveMap.dataPath, reactiveMap.lookupMap);
+		} else {
+			value = _impress.getValueFromLookup(currentComponent, reactiveMap.dataPath, reactiveMap.lookupMap);
+		}
+		resolvedPath = _impress.getResolvedPath(reactiveMap.dataPath, reactiveMap.lookupMap);
+	}
+	reactiveMap.resolvedPath = resolvedPath;
+	reactiveMap.value = value;
+	return reactiveMap;
+};
 
 //get Object and Property value from dataPath
 /**
@@ -801,13 +771,13 @@ _impress.objectPath = (obj, dataPath = []) => {
 		i++;
 	}
 
-	return obj[final] != undefined ? { dataObject: obj, dataProperty: final } : undefined;
+	return obj.hasOwnProperty(final) === true ? { dataObject: obj, dataProperty: final } : undefined;
 };
 
 //Generate a new unique indentifier
 _impress.newGUID = function () {
 	_iGuid += 5;
-	return _iGuid.toString(36);
+	return `#${_iGuid.toString(36)}`;
 };
 
 //Remove newline/return and extraneous spaces, including trimming spaces from datamatches
@@ -830,6 +800,49 @@ _impress.correctHtml = function (template) {
 };
 
 /**
+ * sets the iObject._iattributes and iObject._ievents Maps
+ * @param {Object} iObject
+ * @param {Array} attributeArray
+ */
+_impress.setTemplateAttributeMaps = (iObject, attributeArray, iGuid) => {
+	for (let attr of attributeArray) {
+		let [name, value] = attr.split('=');
+
+		//handle events and data attribuets separately
+		if (name === 'i-event') {
+			value = JSON.parse(value);
+			let entries = Object.entries(value);
+			if (iObject._ievents.has(iGuid) === false) iObject._ievents.set(iGuid, new Map());
+			let eventMap = iObject._ievents.get(iGuid);
+
+			for (let entry of entries) {
+				let [key, value] = entry;
+				key = key.trim();
+				value = value.replace('()', '').replace('(', ',').replace(')', '').split(',');
+				let i = value.length;
+				while (i--) {
+					value[i] = value[i].trim();
+				}
+				if (value.length === 1) value.push('$e');
+				if (eventMap.has(key)) eventMap.get(key).push(value);
+				else eventMap.set(key, [value]);
+			}
+		} else {
+			let dataPath = value.substring(1, value.length - 1);
+			let data = typeof iObject.data === 'function' ? { data: iObject.data() } : { data: iObject.data };
+
+			if (iObject._ireactive.has(dataPath) === true) {
+				let lookupMap = iObject._ireactive.get(dataPath);
+				lookupMap.id.push({ iGuid: iGuid, name: name });
+			} else {
+				let lookupMap = _impress.getLookupDataMap(data, dataPath, iGuid, name);
+				iObject._ireactive.set(dataPath, lookupMap);
+			}
+		}
+	}
+};
+
+/**
  * @private
  * @description
  * converts the template string into iMpress HTML
@@ -843,28 +856,29 @@ _impress.iAttributesHtml = function (iObject) {
 	let { template, name } = iObject;
 	let data = typeof iObject.data === 'function' ? { data: iObject.data() } : { data: iObject.data };
 	let tempLines;
-	let currentComponentNames = Object.keys(impressObjects);
+	let currentComponentNames = impressObjects.keys();
 	let skipComponentCount = 0;
 
 	let wrapInSpan = function (match) {
 		let _iGuid = _impress.newGUID();
-		let name = match.substring(1, match.length - 1);
-		if (iObject._textData[name] == undefined) iObject._textData[name] = [];
-		iObject._textData[name].push(_iGuid);
-		if (name.indexOf('data.') === 0) {
-			//data is substituted in the object definition
-			let dataPathArray = name.match(/[^\[\]\.\{\}]+/g);
-			let value = _impress.get(data, ...dataPathArray);
+		let dataPath = match.substring(1, match.length - 1);
+		let lookupMap;
 
-			return `<span i-data="${_iGuid}">${value}</span>`;
+		if (iObject._ireactive.has(dataPath) === true) {
+			lookupMap = iObject._ireactive.get(dataPath);
+			lookupMap.id.push({ iGuid: _iGuid, name: 'TEXT' });
 		} else {
-			//props cannot be substituted until the propsMap is made
-			return `<span i-data="${_iGuid}">${match}</span>`;
+			lookupMap = _impress.getLookupDataMap(data, dataPath, _iGuid, 'TEXT');
+			iObject._ireactive.set(dataPath, lookupMap);
 		}
+
+		//if a path is resolvable it contains no props references and can be substituted into the template markup
+		if (lookupMap.resolvedPath == undefined) return `<span i-data="${_iGuid}">${match}</span>`;
+		else return `<span i-data="${_iGuid}">${lookupMap.value}</span>`;
 	};
 
-	let isComponent = function (tagLine, componentNamesArray, isEndTag = false) {
-		for (let componentName of componentNamesArray) {
+	let isComponent = function (tagLine, componentNamesIterator, isEndTag = false) {
+		for (let componentName of componentNamesIterator) {
 			if (isEndTag === false && tagLine.indexOf(`<${componentName}`) === 0) return true;
 			if (isEndTag === true && tagLine.indexOf(`</${componentName}`) === 0) return true;
 		}
@@ -877,6 +891,10 @@ _impress.iAttributesHtml = function (iObject) {
 		let v = tempLines[i];
 
 		//skip child component content
+		if (isComponent(v, currentComponentNames, true)) {
+			skipComponentCount--;
+			continue;
+		}
 		if (skipComponentCount > 0) continue;
 
 		if (v[0] === '<') {
@@ -885,41 +903,26 @@ _impress.iAttributesHtml = function (iObject) {
 				skipComponentCount++;
 				if (v.includes('/>')) skipComponentCount--;
 				continue;
-			} else if (isComponent(v, currentComponentNames, true)) {
-				skipComponentCount--;
-				continue;
 			}
+
 			//identify tags with attributes containing data/props/i-events
 			if (v.includes('{props.') || v.includes('{data.') || v.includes('i-event')) {
 				let tag = v.match(/<[^\s]+/);
 				tag = tag[0].slice(1);
-				//test tagline for attribute match, get new GUID if present, remove attributes from tagline and add to impressAttributes{[]}
+				//test tagline for attribute match, get new GUID if present, remove attributes from tagline
 				let attr = v.match(/[a-z-]+={[^}]+}/g);
 
-				if (attr != undefined && !impressObjects[tag]) {
+				if (attr != undefined && !impressObjects.get(tag)) {
 					let _iGuid = _impress.newGUID();
-					impressAttributes[_iGuid] = [];
 					let vAttrIndex = 0;
 					let vAttrLength = attr.length;
 
+					_impress.setTemplateAttributeMaps(iObject, attr, _iGuid);
+
 					while (vAttrIndex < vAttrLength) {
-						let vAttr = attr[vAttrIndex];
-						let nameValueArray = vAttr.split('=');
-
-						//detect JSON or not using ":" test
-						if (nameValueArray[1].includes(':') === false) nameValueArray[1] = nameValueArray[1].substring(1, nameValueArray[1].length - 1);
-						else nameValueArray[1] = JSON.parse(nameValueArray[1]);
-						impressAttributes[_iGuid].push({ attributeName: nameValueArray[0], attributeValue: nameValueArray[1] });
-
 						//replace the attribute in the markup with a reference
-						if (vAttrIndex === 0) {
-							tempLines[i] = tempLines[i].replace(vAttr, `i-attribute="${_iGuid}"`);
-						} else {
-							tempLines[i] = tempLines[i].replace(vAttr, '');
-						}
-						//record the attribute key lookups in iObject._attributes array
-						if (iObject._attributes == undefined) iObject._attributes = [];
-						if (iObject._attributes.includes(_iGuid) === false) iObject._attributes.push(_iGuid);
+						if (vAttrIndex === 0) tempLines[i] = tempLines[i].replace(attr[vAttrIndex], `i-attribute="${_iGuid}"`);
+						else tempLines[i] = tempLines[i].replace(attr[vAttrIndex], '');
 						vAttrIndex++;
 					}
 				}
@@ -990,44 +993,57 @@ _impress.deepClone = (source, optionsObject = {}, target = Array.isArray(source)
 	if (source != undefined) {
 		let sourceObjectsArray = [];
 		let targetObjectsArray = [];
+
 		for (let j = 0, jLen = sourceArray.length; j < jLen; j++) {
 			let keys = sourceArray[j];
 			let isArray = false;
+			let isMap = false;
 
 			if (Array.isArray(sourceArray[j]) === true) isArray = true;
+			else if (sourceArray[j] instanceof Map) isMap = true;
 			else keys = Object.keys(sourceArray[j]);
 
-			for (let i = 0, iLen = keys.length; i < iLen; i++) {
-				let propertyKey = isArray ? i : keys[i];
-				let isPrimitiveType = sourceArray[j][propertyKey] == undefined || (typeof sourceArray[j][propertyKey] !== 'object' && typeof sourceArray[j][propertyKey] !== 'function');
+			for (let key of keys) {
+				let value;
+				if (isArray === true) value = key;
+				else if (isMap === true) [key, value] = key;
+				else value = sourceArray[j][key];
 
-				if (isPrimitiveType === true) {
-					targetArray[j][propertyKey] = sourceArray[j][propertyKey];
-				} else {
-					let propertyType = Object.prototype.toString.call(sourceArray[j][propertyKey]);
+				let isPrimitiveType = value == undefined || (typeof value !== 'object' && typeof value !== 'function');
+				let newValue = value;
+
+				if (isPrimitiveType === false) {
+					let propertyType = Object.prototype.toString.call(value);
 
 					switch (propertyType) {
 						case '[object Object]':
-							targetArray[j][propertyKey] = {};
-							sourceObjectsArray.push(sourceArray[j][propertyKey]);
-							targetObjectsArray.push(targetArray[j][propertyKey]);
+							newValue = {};
+							sourceObjectsArray.push(value);
+							targetObjectsArray.push(newValue);
 							break;
 						case '[object Array]':
-							targetArray[j][propertyKey] = [];
-							sourceObjectsArray.push(sourceArray[j][propertyKey]);
-							targetObjectsArray.push(targetArray[j][propertyKey]);
+							newValue = [];
+							sourceObjectsArray.push(value);
+							targetObjectsArray.push(newValue);
+							break;
+						case '[object Map]':
+							newValue = new Map();
+							sourceObjectsArray.push(value);
+							targetObjectsArray.push(newValue);
 							break;
 						case '[object File]':
-							let blob = sourceArray[j][propertyKey];
-							targetArray[j][propertyKey] = new File([blob], blob.name, { type: blob.type });
+							newValue = new File([value], value.name, { type: value.type });
 							break;
 						case '[object Blob]':
-							targetArray[j][propertyKey] = new Blob([sourceArray[j][propertyKey]], { type: sourceArray[j][propertyKey].type });
+							newValue = new Blob([value], { type: value.type });
 							break;
 						default:
-							targetArray[j][propertyKey] = undefined;
+							newValue = undefined;
 					}
 				}
+				if (isArray === true) targetArray[j].push(newValue);
+				else if (isMap === true) targetArray[j].set(key, newValue);
+				else targetArray[j][key] = newValue;
 			}
 			if (optionsObject.freeze === true) Object.freeze(target[j]);
 		}
@@ -1040,7 +1056,7 @@ _impress.deepClone = (source, optionsObject = {}, target = Array.isArray(source)
 };
 
 /*_impress.iQuery = (component, query) => {
-	let componentArray = component.iChildren;
+	let componentArray = component._impressInternal.iChildren;
 	let result;
 	let i = 0;
 	while (componentArray[i] != undefined){
@@ -1048,7 +1064,7 @@ _impress.deepClone = (source, optionsObject = {}, target = Array.isArray(source)
 		if (_impress.get(componentArray[i], query){
 			result = componentArray[i];
 		} else {
-			componentArray.push(...componentArray[i].iChildren);
+			componentArray.push(...componentArray[i]._impressInternal.iChildren);
 		}
 		if (result != undefined) break; 
 		i++;
@@ -1057,7 +1073,7 @@ _impress.deepClone = (source, optionsObject = {}, target = Array.isArray(source)
 }*/
 
 /*_impress.iQueryAll = (component, query) => {
-	let componentArray = component.iChildren;
+	let componentArray = component._impressInternal.iChildren;
 	let result = [];
 	let i = 0;
 	while (componentArray[i] != undefined){
@@ -1065,7 +1081,7 @@ _impress.deepClone = (source, optionsObject = {}, target = Array.isArray(source)
 		if (_impress.get(componentArray[i], query){
 			result.push(componentArray[i]);
 		} else {
-			componentArray.push(...componentArray[i].iChildren);
+			componentArray.push(...componentArray[i]._impressInternal.iChildren);
 		}
 		i++;
 	}
@@ -1074,22 +1090,32 @@ _impress.deepClone = (source, optionsObject = {}, target = Array.isArray(source)
 
 //CLASSES///////////////////////////////////////////////////////////////////////
 //
-const impressObjects = {};
-const impressComponents = {};
-const impressAttributes = {};
+const impressObjects = new Map();
+const impressComponents = new Map();
 
 class IMPRESSOBJECT {
-	constructor(name, template = '', data = {}, methods = {}) {
-		this.name = name;
-		this.data = data;
-		this.methods = methods;
-		this._attributes = [];
-		this._textData = {};
-		if (template !== '') {
-			this.template = _impress.correctHtml(template);
+	constructor(impressDefinitionObject) {
+		this.name = impressDefinitionObject.name;
+		this.data = impressDefinitionObject.data;
+		if (Array.isArray(impressDefinitionObject.common)) {
+			let commonMethods = impressDefinitionObject.common.map((v) => v.methods || {});
+			this.methods = Object.assign({}, ...commonMethods, impressDefinitionObject.methods);
+		} else this.methods = impressDefinitionObject.methods || {};
+		if (Array.isArray(impressDefinitionObject.common)) {
+			let commonObservers = impressDefinitionObject.common.map((v) => v.observers || {});
+			this.observers = Object.assign({}, ...commonObservers, impressDefinitionObject.observers);
+		} else this.observers = impressDefinitionObject.observers || {};
+
+		//maps
+		this._ireactive = new Map();
+		this._iattributes = new Map();
+		this._ievents = new Map();
+
+		if (impressDefinitionObject.template != undefined && impressDefinitionObject.template !== '') {
+			this.template = _impress.correctHtml(impressDefinitionObject.template);
 			this.template = _impress.iAttributesHtml(this);
 		} else {
-			this.template = template;
+			this.template = '';
 		}
 		this.templateNode = document.createElement('template');
 		this.templateNode.innerHTML = this.template;
@@ -1098,123 +1124,138 @@ class IMPRESSOBJECT {
 
 class IMPRESSCOMPONENT {
 	constructor(iNode) {
-		let iObject = impressObjects[iNode.localName];
-		this.iGuid = _impress.newGUID();
-		this.iNode = iNode;
-		this.name = iNode.localName;
-		this.iChildren = [];
-		this.iRoot = this.iParent == undefined ? this : this.iParent.iRoot;
+		let name = iNode.localName;
+		let iObject = impressObjects.get(name);
+		//PUBLIC
 		this.data = typeof iObject.data === 'function' ? iObject.data() : _impress.deepClone(iObject.data);
-		this.isMounted = false;
-		//make below private?
-		this._iEventNodes = [];
-		this._iEventListener = [];
-		this._propsMaps = {};
-		this._observables = {};
-		this._dataMaps = {};
-		impressComponents[this.iGuid] = this;
-		this.iNode.setAttribute('i-guid', this.iGuid);
-		this.iParent = _impress.findParentComponentByNode(this.iNode);
-	}
+		Object.assign(this, iObject.methods);
 
-	setState(value, pathString) {
-		_impress.setState(this, value, pathString);
+		//PRIVATE
+		let iParent = _impress.findParentComponentByNode(iNode);
+		let iRoot = iParent == undefined ? this : iParent.iRoot;
+		this._impressInternal = {
+			name: name,
+			iGuid: _impress.newGUID(),
+			isMounted: false,
+			iEventNodes: [],
+			iEventListener: [],
+			propsMaps: new Map(),
+			observables: new Map(),
+			observers: iObject.observers,
+			iNode: iNode,
+			iParent: iParent,
+			iRoot: iRoot,
+			iChildren: []
+		};
+		this._impressInternal.iNode.setAttribute('i-guid', this._impressInternal.iGuid);
+		impressComponents.set(this._impressInternal.iGuid, this);
 	}
-	getProps(pathString) {
-		if (pathString == undefined) {
-			let propsKeys = Object.keys(this._propsMaps);
-			let props = {};
+	setState(data, ...value) {
+		_impress.setState(this, data, value);
+	}
+	getPropsMap(pathString) {
+		let propsMap = this._impressInternal.propsMaps.get(pathString);
+		//if a value is given, sets the value to the data owner
+		let dataPathArray = propsMap.resolvedPath.match(/[^\[\]\.\{\}]+/g);
+		let lastPath = dataPathArray.pop();
+		let dataObject = dataPathArray.reduce((acc, cur) => (acc = acc?.[cur]), propsMap.dataOwner);
 
-			for (let propsKey of propsKeys) {
-				let propName = propsKey.replace('props.', '');
-				let propValue = IMPRESS.deepClone(_impress.getState(this, propsKey));
-				props[propName] = propValue;
-			}
-			return props;
-		} else {
-			return IMPRESS.deepClone(_impress.getState(this, pathString));
-		}
+		return { dataOwner: propsMap.dataOwner, fullPath: propsMap.resolvedPath, dataObject: dataObject, dataProperty: lastPath };
+	}
+	getProps() {
+		let props = {};
+		this._impressInternal.propsMaps.forEach((lookup, key) => {
+			let propName = key.replace('props.', '');
+			props[propName] = lookup.value;
+		});
+		return props;
+	}
+	destroy() {
+		IMPRESS.destroyComponent(this);
 	}
 }
 
 //IN-BUILT COMPONENTS
 
 //I-FOR
-let iForMethods = {
-	beforeCreate: ($c) => {
-		$c.iNode.innerHTML = '';
-	},
-	afterMounted: ($c) => {
-		let props = $c.getProps();
+const iForMethods = {
+	beforeCreate: function () {
+		try {
+			let childDefinitionNode = this._impressInternal.iNode.childNodes[0];
 
-		let propsKeys = Object.keys($c._propsMaps);
-		$c.data.propsPassThroughs = [];
-		for (let propsKey of propsKeys) {
-			if (propsKey !== 'props.component' && propsKey !== 'props.iterator') {
-				$c.data.propsPassThroughs.push(`${propsKey.replace('props.', '')}={${propsKey}}`);
+			if (childDefinitionNode == undefined || impressObjects.get(childDefinitionNode.localName) == undefined) {
+				throw new Error(`iMpress error - i-for component: ${this.iGuid} - requires a valid custom element component child.`);
 			}
+			this.data.componentName = childDefinitionNode.localName;
+			this.data.propsPassThroughs = '';
+			this.data.guidArray = [];
+			for (let i = 0, attr; (attr = childDefinitionNode.attributes[i]) !== undefined; i++) {
+				if (attr.localName !== 'i-guid') {
+					if (/{\s*props.array\[i\]\s*}/.test(attr.value) === true) this.data.value = attr.localName;
+					else this.data.propsPassThroughs += `${attr.localName}="${attr.value}"`;
+				}
+				this.data.propsPassThroughs += ' ';
+			}
+			this.data.propsPassThroughs = this.data.propsPassThroughs.trim();
+
+			if (this.data.value == undefined) throw new Error(`iMpress error - i-for component: ${this._impressInternal.iGuid} - please define iterable prop - ?={props.array[i]}.`);
+			else this.data.vPropName = `props.${this.data.value}`;
+			this._impressInternal.iNode.innerHTML = '';
+		} catch (error) {
+			console.error(error);
+			this.destroy();
 		}
-		$c.data.propsPassThroughs = $c.data.propsPassThroughs.join(' ');
-		if (props.component == undefined) $c.data.componentName = $c.iNode.getAttribute('component');
-		else $c.data.componentName = props.component;
-		_iFor.methods.iForChildrenRefresh($c, props.iterator, $c.data.componentName);
 	},
-	childMoved: ($c, $child) => {
-		if ($child.name !== $c.data.componentName || $child.iNode.parentNode !== $c.iNode) {
-			//delete external children appended in or appended out of an i-for
-			IMPRESS.destroyComponent($child);
+	afterMounted: function () {
+		try {
+			let props = this.getProps();
+			if (props.array == undefined || Array.isArray(props.array) === false) throw new Error(`iMpress error - i-for component: ${this.iGuid} - a valid array must be set.`);
+			this.iForChildrenRefresh(props.array);
+		} catch (error) {
+			console.error(error);
+			this.destroy();
+		}
+	},
+	afterPorted: function (child) {
+		//porting of nodes is not permitted for direct children of an i-for due to DOM tracking - children will be destroyed if ported into or out of an i-for
+		if (child._impressInternal.iNode.parentNode === this._impressInternal.iNode && child._impressInternal.iParent === this) {
+			//let props = this.getProps();
+			//let item = props.array.splice(childIndex, 1);
+			//props.array.splice(siblingChildIndex, 0, item);			
 		} else {
-			//document.querySelector('i-for').appendChild(document.querySelector('i-child'));
-			let childNodes = Array.from($c.iNode.querySelectorAll($c.data.componentName));
-			let fromIndex = $c.iChildren.indexOf($child);
-			let toIndex = childNodes.indexOf($child.iNode);
-			let iteratorData = _impress.get($c._propsMaps['props.iterator'].dataOwner, ...$c._propsMaps['props.iterator'].dataPathArray);
-
-			iteratorData.splice(toIndex, 0, ...iteratorData.splice(fromIndex, 1));
-			$c.iChildren.splice(toIndex, 0, ...$c.iChildren.splice(fromIndex, 1));
-			//correct the _propsMaps and dataOwner _observables based on appended order
-			for (let i = 0, iChild; (iChild = $c.iChildren[i]) !== undefined; i++) {
-				let propsMap = iChild._propsMaps['props.item'];
-				let dataPath = propsMap.dataPath;
-				let targetIndex = propsMap.dataOwner._observables[propsMap.dataPath].target.indexOf(iChild);
-				//remove existing observable
-				propsMap.dataOwner._observables[dataPath].target.splice(targetIndex, 1);
-				propsMap.dataOwner._observables[dataPath].dataName.splice(targetIndex, 1);
-				//construct new data path and push new observable
-				propsMap.dataPathArray[propsMap.dataPathArray.length - 1] = i;
-				propsMap.dataPath = propsMap.dataPathArray.join('.');
-				propsMap.dataOwner._observables[propsMap.dataPath].target.push(iChild);
-				propsMap.dataOwner._observables[propsMap.dataPath].dataName.push('props.item');
-			}
+			child.destroy();
 		}
 	},
-	afterUpdated: ($c, dataPath) => {
-		switch (dataPath) {
-			case 'props.iterator':
-				let iterator = $c.getProps('props.iterator');
-				_iFor.methods.iForChildrenRefresh($c, iterator, $c.data.componentName);
-				break;
-		}
-	},
-	iForChildrenRefresh: ($c, iterator, componentName) => {
-		if ($c.iChildren.length === iterator.length) {
+	iForChildrenRefresh: function (arr) {
+		if (this._impressInternal.iChildren.length === arr.length) {
 			return;
-		} else if ($c.iChildren.length < iterator.length) {
+		} else if (this._impressInternal.iChildren.length < arr.length) {
 			let html = '';
-			for (let i = $c.iChildren.length, item; (item = iterator[i]) !== undefined; i++) {
-				html += `<${componentName} item={props.iterator[${i}]} ${$c.data.propsPassThroughs}></${componentName}>`;
+			for (let i = this._impressInternal.iChildren.length, item; (item = arr[i]) !== undefined; i++) {
+				html += `<${this.data.componentName} ${this.data.value}={props.array[${i}]} ${this.data.propsPassThroughs}></${this.data.componentName}>`;
 			}
-			$c.iNode.insertAdjacentHTML('beforeend', html);
+			this._impressInternal.iNode.insertAdjacentHTML('beforeend', html);
 		} else {
-			for (let i = $c.iChildren.length - 1; i >= iterator.length; i--) {
-				IMPRESS.destroyComponent($c.iChildren[i]);
+			for (let i = this._impressInternal.iChildren.length - 1; i >= arr.length; i--) {
+				this._impressInternal.iChildren[i].destroy();
 			}
 		}
 	}
 };
-const _iFor = IMPRESS.create('i-for', undefined, undefined, iForMethods);
+
+const iForObservers = {
+	'props.array': function (value, previousValue) {
+		//if the previousValue !== the currentValue a new array has been created
+		if (value !== previousValue) {
+			this._impressInternal.iChildren = [];
+			this._impressInternal.iNode.innerHTML = '';
+		}
+		this.iForChildrenRefresh(value, this.data.componentName);
+	}
+};
+
+IMPRESS.create({ name: 'i-for', methods: iForMethods, observers: iForObservers, data: {} });
 //I-FOR
 
-//console.log('impressObjects', impressObjects);
-//console.log('impressComponents', impressComponents);
-//console.log('impressAttributes', impressAttributes);
+console.log('impressObjects', impressObjects);
+console.log('impressComponents', impressComponents);
