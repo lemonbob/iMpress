@@ -725,7 +725,7 @@ _impress.getLookupDataMap = (currentComponent, str, iGuid, name = 'TEXT') => {
 	//set to undefined or 'not-resolved'
 	let value = undefined;
 	let resolvedPath = undefined;
-	let rootPath = str.replace(/\[.*/, '');
+	let rootPath = str.match(/props\.[^\[\.]+|data\.[^\[\.]+/)[0];
 	let reactiveMap = { id: [{ iGuid: iGuid, name: name }], dataPath: str, dataOwner: dataOwner, rootPath: rootPath, resolvedPath: resolvedPath, lookupMap: lookupMap, value: value };
 
 	if (isResolvableValue === true) {
@@ -1221,7 +1221,7 @@ const iForMethods = {
 		if (child._impressInternal.iNode.parentNode === this._impressInternal.iNode && child._impressInternal.iParent === this) {
 			//let props = this.getProps();
 			//let item = props.array.splice(childIndex, 1);
-			//props.array.splice(siblingChildIndex, 0, item);			
+			//props.array.splice(siblingChildIndex, 0, item);
 		} else {
 			child.destroy();
 		}
@@ -1250,6 +1250,10 @@ const iForObservers = {
 			this._impressInternal.iChildren = [];
 			this._impressInternal.iNode.innerHTML = '';
 		}
+		//for (let i = 0, ilen = this._impressInternal.iChildren.length; i < ilen; i++) {
+		//	let currentChildValue = this._impressInternal.iChildren[i]._impressInternal.propsMaps.get('props.child').value;
+		//	let newChildIndex = value.indexOf(currentChildValue);			
+		//}
 		this.iForChildrenRefresh(value, this.data.componentName);
 	}
 };
