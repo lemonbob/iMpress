@@ -13,7 +13,7 @@ iMpress is different - it is a high-speed lightweight wrapper for HTML Custom El
 - Uses native support, no Virtual DOM, no more technical debt!
 - Data acess upto 400x faster than Vue3.
 - Method calls run upto 100x faster than Vue3.
-- Component creation/destruction as fast as the fastest frameworks and much faster when using large method section components.
+- Component creation upto 180x faster than React/Vue2/Vue3.
 - Reactive data updates upto 1000x faster than Vue3 and 10x faster than React
 - Memory usage is a fraction of the size of other frameworks, typically 5-10 times smaller.
 - Component code length is more concise, upto 20% smaller codebase.
@@ -24,78 +24,77 @@ iMpress is different - it is a high-speed lightweight wrapper for HTML Custom El
 - No need for eventbus/emits/context API/sending class props — use the in-built custom query engine.
 - NO PROXYS, NO REACTIVE SETTERS (data Vuetation) — data models can be handled externally or using MVC methodology without problems.
 
-In engine terms, ReactJS, Angular, VueJS are steam powered monsters — albeit with large backers — but isn't it time for a more modern approach? Isn't it time we dumped old ideas, such as the Virtual DOM, for lightspeed performance? Instead of new releases such as Vue3 or React, some of which are slower than their forebears, the saying, you can't polish coal comes to mind. iMpress is new, it has been designed to provide a truly up-to-date solution.
+In engine terms, ReactJS, Angular, VueJS are steam powered monsters — albeit with large backers — but isn't it time for a more modern approach? Isn't it time we dumped old ideas, such as the Virtual DOM, for lightspeed performance? Instead of new releases such as Vue3 or React 18, some of which are slower than their forebears, the saying, you can't polish coal comes to mind. iMpress is new 3rd generation framework, it has been designed to provide a truly up-to-date solution.
 
 ## iMpress
 
 
 To use - see examples - (also see "i-for" pre-built component)
 
-1. create an ES6 module
+1. create an ES6 module and import the impress class
 
-2. import IMPRESS from "./impress.js";
+2. import {IMPRESS} from "./impress.js";
 
-3. set the data object either an object or function return are fine e.g. (impress will deepClone an object)
-```
-data = {
-   title:"iMpress"		
-};
-```
-4. set the methods e.g.
-```
-methods = {
-   customMethod: function(){
-   //your code - this.data contains the data object, this._i is the internal impress object holding the name, iNode, observers, and propMaps
-   }
-```
-5. set the template as a string literal or import HTML file via AJAX e.g.
-```
-template = `<h1 class="my_class">{data.title} custom elements <em>high speed</em><strong> framework</strong> demonstration</h1>`
-```
+3. create your impress component as an extension of the IMPRESS class with options for data,mixins, and observers. The only requirement is that your class has a name property. The template is option, but will server as the component's markup. This is reactive, allowing for server side rendering and conditional component rendering. Templates are almost pure 100% valid HTML, unlike Vue2/3 with their pseudo markup and directives or React with it's JSX. (see below for templates).
 
-6. declare a variable with the argument as the Custom Element tag you want to create (all Custom Elements must be hyphenated) and call the IMPRESS.create method, passing in a definition object with the name and one or more of template, data, methods, observers, e.g. 
-```
-let iapp = IMPRESS.create({
-	name: 'i-app',
-	template: template, //String
-	data: data, //Object or function returning and object
-	methods: methods, //Object of functions
-   observers: observers //Object of functions
-});
-```
+All components methods are declared on the prototype of the class, including observer and lifecycle methods. All methods can be asynchronous. Asynchronous lifecycle methods will hold up the lifecycle of the component allowing full server side control over component creation and destruction. Observers are registered as an array of reactive data to observe.
 
-7. data is used in the HTML in curly braces either as attributes or content e.g.
 ```
-{data.title}
+class IAPP extends IMPRESS {
+	constructor(node) {
+		super(node);
+		this.name = 'i-child';
+		this.data = {
+			test: 'BAR'
+		};
+		this.observers = ['props.child.item'];
+		this.template = template;
+	}
+	beforeCreate(){
+		//called before the component is created
+	}
+	afterMounted(){
+		//called after component mount
+	}
+	exampleMethod($e) {
+		this.iSetState(['props', 'child', 'item'], 'FOO');
+	}
+	'props.child.item'(){
+		exmple observer
+	}
+}
+
+export const child = IMPRESS.register(ICHILD);
 ```
 
-8. methods are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string. Specify params, data.property/props.property etc. $e or $event is the event object, or if no params are specified the event object will be the first param.
+4. set the template as a string literal or import HTML file via AJAX. Reference reactive data in curly braces. e.g
+```
+template = `<h1 class="my_class">{data.test} examples of data binding {props.child.item}</h1>`
+```
+5. register your component with iMpress
+
+```
+export const iapp = IMPRESS.register(IAPP);
+```
+6. methods are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string. Specify params, data.property/props.property etc. $e or $event is the event object, or if no params are specified the event object will be the first param.
 ```
 i-event={"click":"customMethod"}
 ```
 
-9. Props are passed via React-like methods
+9. Props are passed similar to React-like, an attribute wrapping a valid data or prop value will become a prop
 ```
 <i-child title={data.title}></i-child>
 ```
 
 10. Props are not mutable. They exist only as mapped namespaces for the child component to access the true owner of the data. Props when properly conceived are not local data, nor should they ever be considered as local data. To modify a prop, internally a propsMap contains data references to the true owner of the data, a setState method on each component can be used to request mutation and records a full log of where the data was changed.
 ```
-this.setState('props.title', newValue);
+this.iSetState(['props','child','index'], newValue);
 ```
-No more contrived usage of class props to pass mutation methods throughout a system as is common in React.
+No more contrived usage of class props to pass mutation methods throughout a system as is common in React. Calling this.iGetState will return the full data path and data owner of the prop which in development mode contains a list of mutations for ease of debugging.  
 
-11. An observer can be defined to observer any props or data object
-```
-observers : {
-   'data.array':function(newVal, oldVal){
-   
-   }
-}
-```
-12. In-built query methods allow robust and debuggable communication between parent/child/siblings. No more eventbus/emits/contextAPI needed.
+12. In-built query methods allow robust and debuggable communication between parent/child/siblings. No more eventbus/emits/contextAPI needed. Use iQuerySelector, iQuerySelectorAll, and iClosest. Additionally you can even use the DOM to extract registered components directly from the tree using the iGuid property of the components.
 
-13. All methods exist on the object base, not as class instance methods. Consequently memory usage is a fraction the size of most frameworks. Methods receive the component instance as a parameter in order to access data and update state, this results in extremely fast performance. Pass in the instance as $c, or retrive the instance via the DOM node or i-guid attribute and the internal query methods.
+13. All methods exist as class proptotype methods. Consequently memory usage is a fraction the size of most frameworks.
 
 14. All components can be added or removed simply by adding or removing their Custom Element HTML tag. No more contrived solutions such as portals, just add a tag where you want anywhere in the DOM. Everything is tracked, every component has a guid, it can be traced, used, and removed simply by requesting the component instance object.
 ```
