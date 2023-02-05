@@ -40,7 +40,7 @@ To use - see examples - (also see "i-for" pre-built component)
 All components methods are declared on the prototype of the class, including observer and lifecycle methods. All methods can be asynchronous. Asynchronous lifecycle methods will hold up the lifecycle of the component allowing full server side control over component creation and destruction. Observers are registered as an array of reactive data to observe.
 
 ```
-class IAPP extends IMPRESS {
+class ICHILD extends IMPRESS {
 	constructor(node) {
 		super(node);
 		this.name = 'i-child';
