@@ -39,7 +39,7 @@ To use - see examples - (also see "i-for" pre-built component)
 
 4. impress takes the template as a template literal string
 
-All components methods are declared on the prototype of the class, including observer and lifecycle methods. All methods can be asynchronous. Asynchronous lifecycle methods will hold up the lifecycle of the component allowing full server side control over component creation and destruction. Observers are registered as an array of reactive data to observe. Slots are supported by HTML custom elements as standard (see MDN).
+All components methods are declared on the prototype of the class, including observer and lifecycle methods. All methods can be asynchronous. Asynchronous lifecycle methods will hold up the lifecycle of the component allowing full server side control over component creation and destruction. Observers are registered as an array of reactive data to observe. Slots are supported by HTML custom elements as standard in the shadowDOM (see MDN). Component scoped shadow root css style tags can be dynamic altered avoiding unnecesary bulky class switching and !important overrides.
 
 ```
 let template = /*html*/`
