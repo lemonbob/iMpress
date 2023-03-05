@@ -47,7 +47,7 @@ class ICHILD extends IMPRESS {
 		this.data = {
 			test: 'BAR'
 		};
-		this.observers = ['props.child.item'];
+		this.iDefine('observer', 'props.child.item', 'propsChildObserver');
 		this.template = template;
 	}
 	beforeCreate(){
@@ -59,7 +59,7 @@ class ICHILD extends IMPRESS {
 	exampleMethod($e) {
 		this.iSetState(['props', 'child', 'item'], 'FOO');
 	}
-	'props.child.item'(){
+	propsChildObserver(){
 		exmple observer
 	}
 }
