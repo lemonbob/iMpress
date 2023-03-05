@@ -1,0 +1,135 @@
+/** @format */
+
+:root {
+	--infoColor: #aaa;
+	--impressColor: rgb(32, 34, 180);
+	--templateColor: #eef;
+	--sectionHeight: 100px;
+	--sectionBorder: 3px var(--infoColor) dashed;
+	--defaultFont: 'Varela Round', sans-serif;
+}
+
+* {
+	margin: 0;
+	padding: 0;
+	outline: 0;
+	font-size: 100%;
+	box-sizing: border-box;
+	vertical-align: baseline;
+	background: transparent;
+	background-size: cover;
+	background-repeat: no-repeat;
+	background-position: center;
+	font-family: var(--defaultFont);
+}
+
+.i-style {
+	position: relative;
+	display: block;
+}
+
+input {
+	border: 2px var(--infoColor) solid;
+	border-radius: 10px;
+	font-size: 75%;	
+	padding: 10px;
+	margin: 20px 0px;
+}
+
+input::placeholder {
+	font-style: italic;
+}
+
+hr {
+	margin-block-start: 0.5em;
+	margin-block-end: 0.5em;
+	width: 100%;
+	clear: both;
+	position: relative;
+}
+
+h1 {
+	margin-bottom: 0.5em;
+	font-size: 125%;
+}
+
+button {
+	font-size: 18px;
+	background-color: var(--impressColor);
+	font-family: var(--defaultFont);
+	border-radius: 10px;
+	color: #fff;
+	margin: 20px;
+	padding: 10px 20px;
+	border: 2px var(--infoColor) solid;
+	opacity: 1;
+	box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.5);
+	transition: opacity ease-in-out 0.3s;
+}
+
+.header {
+	background-image: linear-gradient(77deg, rgb(0, 2, 144) 33%, rgb(98, 87, 248));
+	text-align: center;
+	width: 100%;
+	padding: 24px 0px;
+	color: var(--templateColor);
+}
+
+.children{
+	display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+	margin-top:20px;
+}
+
+.child {
+	display:flex;
+	flex-direction: column;
+	justify-content: center;
+	margin-right: 10px;
+}
+
+.flex-centre {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	align-items: center;
+	margin: 20px;
+}
+
+.text-centre{
+	text-align: center;
+}
+
+.speed-test-selector a{
+	margin: 20px;
+	padding: 20px;
+	font-size: 18px;
+	background-color: var(--impressColor);
+	font-family: var(--defaultFont);
+	border-radius: 10px;
+	color: #fff;
+	margin: 20px;
+	padding: 10px 20px;
+	border: 2px var(--infoColor) solid;
+	opacity: 1;
+	box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.5);
+	transition: opacity ease-in-out 0.3s;
+}
+
+table {
+	font-family: arial, sans-serif;
+	border-collapse: collapse;
+	width: 90%;
+	margin-top:20px;
+  }
+  
+  td, th {
+	border: 1px solid #dddddd;
+	text-align: left;
+	padding: 8px;
+  }
+  
+  tr:nth-child(even) {
+	background-color: #dddddd;
+  }
