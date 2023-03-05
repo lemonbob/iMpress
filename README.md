@@ -37,9 +37,50 @@ To use - see examples - (also see "i-for" pre-built component)
 
 3. create your impress component as an extension of the IMPRESS class with options for data,mixins, and observers. The only requirement is that your class has a name property. The template is option, but will server as the component's markup. This is reactive, allowing for server side rendering and conditional component rendering. Templates are almost pure 100% valid HTML, unlike Vue2/3 with their pseudo markup and directives or React with it's JSX. (see below for templates).
 
-All components methods are declared on the prototype of the class, including observer and lifecycle methods. All methods can be asynchronous. Asynchronous lifecycle methods will hold up the lifecycle of the component allowing full server side control over component creation and destruction. Observers are registered as an array of reactive data to observe.
+4. impress takes the template as a template literal string
+
+All components methods are declared on the prototype of the class, including observer and lifecycle methods. All methods can be asynchronous. Asynchronous lifecycle methods will hold up the lifecycle of the component allowing full server side control over component creation and destruction. Observers are registered as an array of reactive data to observe. Slots are supported by HTML custom elements as standard (see MDN).
 
 ```
+let template = /*html*/`
+<link href="css/app.css" rel="stylesheet" type="text/css">
+<i-for class="children" let="child" of="{data.children}">
+	<i-child class="test-class" child={child}><div>This is a slot</div></i-child>
+</i-for>
+<style>
+* {
+	--dynamicCol: {data.col};
+}
+		
+input{
+	background-color: var(--dynamicCol);
+	color: {data.pen};
+}
+</style>`
+class IAPP extends IMPRESS {
+	constructor(node) {
+		super(node);
+		this.name = 'i-app';
+		this.data = {
+			children: new Array(10).fill('foo'),
+			col: 'red',
+			pen: 'blue'
+		};
+		this.template = template;
+	}
+	beforeCreate(){
+		//called before the component is created
+	}
+	afterMounted(){
+		//called after component mount
+	}	
+}
+
+export const child = IMPRESS.register(ICHILD);
+```
+
+```
+let template = /*html*/`<h1 class="my_class">{data.test} examples of data binding {props.child}</h1><slot></slot>`
 class ICHILD extends IMPRESS {
 	constructor(node) {
 		super(node);
@@ -67,10 +108,6 @@ class ICHILD extends IMPRESS {
 export const child = IMPRESS.register(ICHILD);
 ```
 
-4. set the template as a string literal or import HTML file via AJAX. Reference reactive data in curly braces. e.g
-```
-template = `<h1 class="my_class">{data.test} examples of data binding {props.child.item}</h1>`
-```
 5. register your component with iMpress
 
 ```
