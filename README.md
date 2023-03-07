@@ -82,7 +82,7 @@ class IAPP extends IMPRESS {
 	}	
 }
 
-export const child = IMPRESS.register(ICHILD);
+export const iapp = IMPRESS.register(IAPP);
 ```
 
 ```
