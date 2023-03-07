@@ -33,13 +33,13 @@ To use - see examples - (also see "i-for" pre-built component)
 
 1. create an ES6 module and import the impress class
 
-2. import {IMPRESS} from "./impress.js";
+2. import {IMPRESS} from "./impress.min.js";
 
-3. create your impress component as an extension of the IMPRESS class with options for data,mixins, and observers. The only requirement is that your class has a name property. The template is option, but will server as the component's markup. This is reactive, allowing for server side rendering and conditional component rendering. Templates are almost pure 100% valid HTML, unlike Vue2/3 with their pseudo markup and directives or React with it's JSX. (see below for templates).
+3. create your impress component as an extension of the IMPRESS class with properties for data. You can also define mixins and observers. The only requirement is that your class has a name property. The template is also optional, but will server as the component's markup. This is reactive, allowing for server side rendering and conditional component rendering. Templates are almost pure 100% valid HTML, unlike Vue2/3 with their pseudo markup and directives or React with it's JSX. (see below for templates).
 
 4. impress takes the template as a template literal string
 
-All components methods are declared on the prototype of the class, including observer and lifecycle methods. All methods can be asynchronous. Asynchronous lifecycle methods will hold up the lifecycle of the component allowing full server side control over component creation and destruction. Observers are registered as an array of reactive data to observe. Slots are supported by HTML custom elements as standard in the shadowDOM (see MDN). Component scoped shadow root css style tags can be dynamic altered avoiding unnecesary bulky class switching and !important overrides.
+All components methods are declared on the prototype of the class, including observer and lifecycle methods. All methods can be asynchronous. Asynchronous lifecycle methods will hold up the lifecycle of the component allowing full control over component creation and destruction. Observers are registered as an array of reactive data to observe on the in-built iDefine method. Slots are supported by HTML custom elements as standard in the shadowDOM (see MDN). Component scoped shadow root css style tags can include dynamic data and props and altered reactively avoiding unnecesary bulky class switching and !important overrides. Reactive data is always defined in curly braces and specified data or props - e.g. {data.foo} / {props.bar}. Reactive data can also be dynamic e.g. {data[data.bar]} allowing data switching very easily, again this is not possible in Vue2/3
 
 ```
 let template = /*html*/`
@@ -49,7 +49,7 @@ let template = /*html*/`
 </i-for>
 <style>
 * {
-	--dynamicCol: {data.col};
+ --dynamicCol: {data.col};
 }
 		
 input{
@@ -113,21 +113,21 @@ export const child = IMPRESS.register(ICHILD);
 ```
 export const iapp = IMPRESS.register(IAPP);
 ```
-6. methods are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string. Specify params, data.property/props.property etc. $e or $event is the event object, or if no params are specified the event object will be the first param.
+6. Events are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string. Specify params, data.property/props.property etc. $e or $event is the event object, or if no params are specified the event object will be the first param. Rective data can also be passed as arguments.
 ```
 i-event={"click":"customMethod"}
 ```
 
-9. Props are passed similar to React-like, an attribute wrapping a valid data or prop value will become a prop
+9. Props are passed similar to React-like props, an attribute wrapping a valid data or prop value will become automatically become a prop. In this way reactive attribute are not permitted on the custom component tag itself - these would become props.
 ```
 <i-child title={data.title}></i-child>
 ```
 
-10. Props are not mutable. They exist only as mapped namespaces for the child component to access the true owner of the data. Props when properly conceived are not local data, nor should they ever be considered as local data. To modify a prop, internally a propsMap contains data references to the true owner of the data, a setState method on each component can be used to request mutation and records a full log of where the data was changed.
+10. Props are mutable using the iSetState in-build class method. Props exist only as mapped namespaces for the child component to access the true owner of the data and all reactive data retains references to its true owner. Props when properly conceived are not local data, nor should they ever be considered as local data. To modify a prop, internally a propsMap contains data references to the true owner of the data, a iSetState method on each component can be used to request mutation and records a full log of where the data was changed. Time-travel debugging is added when this.iDefine('isDebug', true) is called on the constructor of a root component - e.g. IAPP.
 ```
 this.iSetState(['props','child','index'], newValue);
 ```
-No more contrived usage of class props to pass mutation methods throughout a system as is common in React. Calling this.iGetState will return the full data path and data owner of the prop which in development mode contains a list of mutations for ease of debugging.  
+No more contrived usage of class props to pass mutation methods throughout a system as is common in React. Calling this.iGetState will return the full data path and data owner of the prop which in development mode (iDefine('isDebug', true) contains a list of mutations for ease of debugging.
 
 12. In-built query methods allow robust and debuggable communication between parent/child/siblings. No more eventbus/emits/contextAPI needed. Use iQuerySelector, iQuerySelectorAll, and iClosest. Additionally you can even use the DOM to extract registered components directly from the tree using the iGuid property of the components.
 
@@ -138,6 +138,8 @@ No more contrived usage of class props to pass mutation methods throughout a sys
 <i-app></i-app> 
 ```
 
-15. All Custom Element components must be hyphenated with one hyphen e.g. my-app, shopping-cart, address-form etc. 
+15. All Custom Element components must be hyphenated with one hyphen e.g. my-app, shopping-cart, address-form etc.
+
+16. <i-for> and <i-if> pre built components can be used. <i-for> takes two attributes - let="" and of="". Let defines a local instance representation of the iterable data item. The i-if component takes one attribute condition={data.foo} which is a Boolean. When true the component appears in the DOM, when false, it is removed.
 
 ## upto 1000 times faster than ReactJS, Vue and Angular
