@@ -72,7 +72,13 @@ class IAPP extends IMPRESS {
 		//called before the component is created
 	}
 	afterMounted(){
-		//called after component mount
+		//called after the component mounts
+	}
+	beforeDestroy(){
+		//called before the component is destroyed
+	}
+	afterDestroy(){
+		//called after the component is destroyed
 	}	
 }
 
