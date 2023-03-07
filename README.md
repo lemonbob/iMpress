@@ -147,5 +147,21 @@ No more contrived usage of class props to pass mutation methods throughout a sys
 15. All Custom Element components must be hyphenated with one hyphen e.g. my-app, shopping-cart, address-form etc.
 
 16. <i-for> and <i-if> pre built components can be used. <i-for> takes two attributes - let="" and of="". Let defines a local instance representation of the iterable data item. The i-if component takes one attribute condition={data.foo} which is a Boolean. When true the component appears in the DOM, when false, it is removed.
+	
+17. Every IMPRESS class component defines the following prototype methods
+	
+	iDefine(definition, ...args)
+	iSetState(data, ...value) 
+	iGetState(data)
+	iDestroy() 
+	iClosest(query) 
+	iQuerySelector(query)
+	iQuerySelectorAll(query)
+	iGetComponentByNode(targetNode)
+	iGetComponentById(iGuid)
+	iGetComponentsByName(name)
+	iWait()
+	
+18. the in-built query methods take and queryObject, and can query {name: i-app, data:  {path: ['data', 'bar'], value: 'foo'}, props: {path: ['props', 'bar'], value: 'foo'}, method: myMethod } - query params can all be defined in Arrays for multiple data/props/methods/names
 
 ## upto 1000 times faster than ReactJS, Vue and Angular
