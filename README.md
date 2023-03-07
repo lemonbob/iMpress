@@ -165,8 +165,11 @@ No more contrived usage of class props to pass mutation methods throughout a sys
 18. the in-built query methods takes a queryObject, and can query one or more of data/name/method/props
 	
 ```
-{name: i-app, data:  {path: ['data', 'bar'], value: 'foo'}, props: {path: ['props', 'bar'], value: 'foo'}, method: myMethod }
+{name: 'i-app', data:  {path: ['data', 'bar'], value: 'foo'}, props: {path: ['props', 'bar'], value: 'foo'}, method: myMethod }
 ```
 query params can all be defined in Arrays for multiple data/props/methods/names
+```
+{name: ['i-app', 'i-child']}
+```
 
 ## upto 1000 times faster than ReactJS, Vue and Angular
