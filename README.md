@@ -150,17 +150,17 @@ No more contrived usage of class props to pass mutation methods throughout a sys
 	
 17. Every IMPRESS class component defines the following prototype methods
 	
-	iDefine(definition, ...args)
-	iSetState(data, ...value) 
-	iGetState(data)
-	iDestroy() 
-	iClosest(query) 
-	iQuerySelector(query)
-	iQuerySelectorAll(query)
-	iGetComponentByNode(targetNode)
-	iGetComponentById(iGuid)
-	iGetComponentsByName(name)
-	iWait()
+-iDefine(definition, ...args)
+-iSetState(data, ...value) 
+-iGetState(data)
+-iDestroy() 
+-iClosest(query) 
+-iQuerySelector(query)
+-iQuerySelectorAll(query)
+-iGetComponentByNode(targetNode)
+-iGetComponentById(iGuid)
+-iGetComponentsByName(name)
+-iWait()
 	
 18. the in-built query methods takes a queryObject, and can query one or more of data/name/methods/props
 	
