@@ -162,10 +162,10 @@ No more contrived usage of class props to pass mutation methods throughout a sys
 	iGetComponentsByName(name)
 	iWait()
 	
-18. the in-built query methods takes a queryObject, and can query one or more of data/name/method/props
+18. the in-built query methods takes a queryObject, and can query one or more of data/name/methods/props
 	
 ```
-{name: 'i-app', data:  {path: ['data', 'bar'], value: 'foo'}, props: {path: ['props', 'bar'], value: 'foo'}, method: myMethod }
+{name: 'i-app', data:  {path: ['data', 'bar'], value: 'foo'}, props: {path: ['props', 'bar'], value: 'foo'}, methods: myMethod }
 ```
 query params can all be defined in Arrays for multiple data/props/methods/names
 ```
