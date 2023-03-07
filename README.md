@@ -17,9 +17,9 @@ iMpress is different - it is a high-speed lightweight wrapper for HTML Custom El
 - Reactive data updates upto 1000x faster than Vue3 and 10x faster than React
 - Memory usage is a fraction of the size of other frameworks, typically 5-10 times smaller.
 - Component code length is more concise, upto 20% smaller codebase.
-- Props are handled correctly as name spaced representations of data, and are immutable.
+- Props are handled correctly as name spaced representations of data, full time travel debug is included to avoid the need for VueX/Redux.
 - Synchonous code, no more waiting for "nextTick" or components to mount.
-- Use async in your life cycle methods, if desired, you are in full control.
+- Use async in your life cycle methods, if desired, or not, you are in full control.
 - Server-side and dynamic templates, native portals and slots.
 - No need for eventbus/emits/context API/sending class props — use the in-built custom query engine.
 - NO PROXYS, NO REACTIVE SETTERS (data Vuetation) — data models can be handled externally or using MVC methodology without problems.
