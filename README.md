@@ -175,4 +175,4 @@ query params can all be defined in Arrays for multiple data/props/methods/names
 {name: ['i-app', 'i-child']}
 ```
 
-## upto 1000 times faster than ReactJS, Vue and Angular
+### upto 1000 times faster than other frameworks
