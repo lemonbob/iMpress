@@ -2,7 +2,7 @@
 
 ## Introduction
 
-### upto 1000x faster than Vue3 and 180x faster than React
+### up to 1000x faster than Vue3 and up to 180x faster than React
 
 There are many frameworks available for supposedly assisting in web development, some are current, many have fallen from favour. The current most popular frameworks are ReactJS, Angular, VueJS - all of which use a Virtual DOM. Claims circulate the web about the virtues of the Virtual DOM. However, most of the claims are false. Many of the claims centre around avoiding repaints and supposedly batching updates to improve speed. The fact is that modern browsers already batch updates - called the render tree - browsers do this at high speed in native code. The claim that a Javascript difference engine can outperform native code is absurd. Indeed, independent tests have repeatedly shown that Virtual DOM based frameworks slow optimum web performance by a factor up to 100-fold. 
 
