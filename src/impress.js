@@ -2,168 +2,6 @@ const impressObjects = new Map();
 const impressComponents = new Map();
 
 /**
- * helper methods of impress
- *
- * @format
- */
-//INTERFACE
-const $i_ = {};
-
-//IMPLEMENTATION
-/**
- * @private
- * @description
- * clones and object or array with the option to deep freeze the clone
- * @param {Object} source
- * @param {Object} optionsObject
- * @param {Object} target
- * @param {Array} sourceArray
- * @param {Array} targetArray
- * @returns {Object}
- */
-$i_.deepClone = (source, optionsObject = {}, target, sourceArray = [source], targetArray, circularObjectsMap = new Map()) => {
-	if (source != undefined) {
-		if (target == undefined) {
-			switch (Object.prototype.toString.call(source)) {
-				case '[object Map]':
-					target = new Map();
-					break;
-				case '[object Array]':
-					target = [];
-					break;
-				case '[object Set]':
-					target = new Set();
-					break;
-				case '[object Object]':
-					target = {};
-					break;
-				default:
-					return source;
-			}
-			targetArray = [target];
-		}
-		let sourceObjectsArray = [];
-		let targetObjectsArray = [];
-
-		for (let j = 0, jLen = sourceArray.length; j < jLen; j++) {
-			let keys = sourceArray[j];
-			let sourceType = Object.prototype.toString.call(sourceArray[j]);
-			if (sourceType === '[object Object]') keys = Object.keys(sourceArray[j]);
-
-			for (let key of keys) {
-				let value;
-				if (sourceType === '[object Array]') value = key;
-				else if (sourceType === '[object Map]') [key, value] = key;
-				else if (sourceType === '[object Set]') value = key;
-				else value = sourceArray[j][key];
-
-				let isPrimitiveType = value == undefined || (typeof value !== 'object' && typeof value !== 'function');
-				let newValue = value;
-
-				if (circularObjectsMap.has(value) === true) {
-					newValue = circularObjectsMap.get(value);
-				} else {
-					if (isPrimitiveType === false) {
-						let propertyType = Object.prototype.toString.call(value);
-
-						switch (propertyType) {
-							case '[object Object]':
-								newValue = {};
-								sourceObjectsArray.push(value);
-								targetObjectsArray.push(newValue);
-								break;
-							case '[object Array]':
-								newValue = [];
-								sourceObjectsArray.push(value);
-								targetObjectsArray.push(newValue);
-								break;
-							case '[object Map]':
-								newValue = new Map();
-								sourceObjectsArray.push(value);
-								targetObjectsArray.push(newValue);
-								break;
-							case '[object Set]':
-								newValue = new Set();
-								sourceObjectsArray.push(value);
-								targetObjectsArray.push(newValue);
-								break;
-							case '[object File]':
-								newValue = new File([value], value.name, { type: value.type });
-								break;
-							case '[object Blob]':
-								newValue = new Blob([value], { type: value.type });
-								break;
-							default:
-								newValue = undefined;
-						}
-						if (newValue != undefined) circularObjectsMap.set(value, newValue);
-					}
-				}
-				if (sourceType === '[object Array]') targetArray[j].push(newValue);
-				else if (sourceType === '[object Map]') targetArray[j].set(key, newValue);
-				else if (sourceType === '[object Set]') targetArray[j].add(newValue);
-				else targetArray[j][key] = newValue;
-			}
-			if (optionsObject.freeze === true) Object.freeze(target[j]);
-		}
-		if (sourceObjectsArray.length === 0) {
-			return target;
-		} else {
-			return $i_.deepClone(source, optionsObject, target, sourceObjectsArray, targetObjectsArray, circularObjectsMap);
-		}
-	}
-};
-
-/**
- * @private
- * @description
- * sets a value to an object/array
- * for missing properties it will default to create a new object not an array
- * @param {*} value
- * @param {Object} obj
- * @param  {...String | Number} path
- */
-/*$i_.set = (value, obj, ...path) => {
-	let i = 0;
-	let len = path.length - 1;
-	while (obj != undefined && i < len) {
-		if (obj[path[i]] === undefined) obj[path[i]] = {};
-		obj = obj[path[i]];
-		i++;
-	}
-	if (obj && i === len) {
-		obj[path[i]] = value;
-	}
-};*/
-
-/**
- * @public
- * @description
- * universal safe get, returns undefined if property is not valid
- * @param {Object} obj
- * @param  {...String} path
- * @returns {*}
- */
-/*$i_.get = (obj, ...path) => {
-	let i = 0;
-	let len = path.length - 1;
-	while (obj != undefined && i < len) {
-		obj = obj[path[i]];
-		i++;
-	}
-	return obj && i === len ? obj[path[i]] : undefined;
-};*/
-
-/**
- * Universal wait promise waits time(ms) before resolving
- * @param {Number} time
- * @returns
- */
-/*$i_.wait = (time) => {
-	return new Promise((resolve) => setTimeout(() => resolve(), time));
-};*/
-
-/**
  * debug module including error handling
  *
  * @format
@@ -231,7 +69,12 @@ $idebug.warn = (errorCode, currentComponent, ...args) => {
  */
 $idebug.setStateChangeLog = (callerComponent, callerPathArray, resolvedDataOwner, resolvedPathArray) => {
 	let resolvedPath = resolvedPathArray.join('.');
-	let value = $i_.deepClone(_idebug.getValueFromResolvedPath(resolvedDataOwner, resolvedPathArray));
+	let value = null;
+	try {
+		value = structuredClone(_idebug.getValueFromResolvedPath(resolvedDataOwner, resolvedPathArray));
+	} catch (error) {
+		/** */
+	}
 
 	if (_idebugMap.has(resolvedDataOwner._impressInternal.iGuid) === false) _idebugMap.set(resolvedDataOwner._impressInternal.iGuid, new Map());
 
@@ -1109,7 +952,6 @@ $itemplate.correctHtml = function (template) {
  * @format
  */
 
-
 //PRIVATE
 const _iRegister = new Map();
 const _impress = {};
@@ -1172,33 +1014,7 @@ class IMPRESS {
 		this.props = {};
 		this.data = {};
 		this._impressInternal = {};
-		Object.defineProperty(this, 'template', {
-			get: () => this.#template,
-			set: (value) => {
-				if (typeof value === 'string') {
-					if (value !== this.#template) {
-						if (this._impressInternal.isConnected !== true) {
-							this.#template = value;
-						} else {
-							_impress.clearReactivity(this);
-							this.#template = value;
-							this.#template = $itemplate.correctHtml(this.#template);
-							this.#template = $itemplate.iAttributesHtml(this.#template, this._impressInternal.iReactive, this._impressInternal.iEvents);
-							this._impressInternal.templateNode = document.createElement('template');
-							this._impressInternal.templateNode.innerHTML = this.#template;
-							this._impressInternal.templateNode = this._impressInternal.templateNode.content;
-							if (this._impressInternal.isMounted === true) {
-								this._impressInternal.isMounted = false;
-								_impress.createComponent(this);
-							}
-						}
-					}
-				} else {
-					$idebug.error('templateType',this);					
-				}
-			}
-		});
-
+		
 		//class has been registered this is a call from connectComponent passing in the connected node
 		if (iNode !== undefined) {
 			let name = iNode.localName;
@@ -1271,6 +1087,32 @@ class IMPRESS {
 			throw new Error(`iMpress error --- ${baseInstance.name} invalid class --- class must extend an instance of IMPRESS`);
 		}
 	}
+	get template(){
+		return this.#template;
+	}
+	set template(value){
+		if (typeof value === 'string') {
+			if (value !== this.#template) {
+				if (this._impressInternal.isConnected !== true) {
+					this.#template = value;
+				} else {
+					_impress.clearReactivity(this);
+					this.#template = value;
+					this.#template = $itemplate.correctHtml(this.#template);
+					this.#template = $itemplate.iAttributesHtml(this.#template, this._impressInternal.iReactive, this._impressInternal.iEvents);
+					this._impressInternal.templateNode = document.createElement('template');
+					this._impressInternal.templateNode.innerHTML = this.#template;
+					this._impressInternal.templateNode = this._impressInternal.templateNode.content;
+					if (this._impressInternal.isMounted === true) {
+						this._impressInternal.isMounted = false;
+						_impress.createComponent(this);
+					}
+				}
+			}
+		} else {
+			$idebug.error('templateType', this);
+		}
+	}
 	iDefine(definition, ...args) {
 		//if (this._impressInternal ==
 		if (this._impressInternal.controlFlags == undefined) this._impressInternal.controlFlags = {};
@@ -1305,6 +1147,29 @@ class IMPRESS {
 					$idebug.setGlobalMethod(args[0]);
 				}
 				break;
+		}
+	}
+	iSetTemplate(value) {
+		if (typeof value === 'string') {
+			if (value !== this.template) {
+				if (this._impressInternal.isConnected !== true) {
+					this.template = value;
+				} else {
+					_impress.clearReactivity(this);
+					this.template = value;
+					this.template = $itemplate.correctHtml(this.template);
+					this.template = $itemplate.iAttributesHtml(this.template, this._impressInternal.iReactive, this._impressInternal.iEvents);
+					this._impressInternal.templateNode = document.createElement('template');
+					this._impressInternal.templateNode.innerHTML = this.template;
+					this._impressInternal.templateNode = this._impressInternal.templateNode.content;
+					if (this._impressInternal.isMounted === true) {
+						this._impressInternal.isMounted = false;
+						_impress.createComponent(this);
+					}
+				}
+			}
+		} else {
+			$idebug.error('templateType', this);
 		}
 	}
 	iSetState(data, ...value) {
@@ -1720,7 +1585,7 @@ _impress.setState = (currentComponent, path, value) => {
 	if (path[0] === 'props') {
 		//TODO need a method to completely resolve a data path including keys
 		let { resolvedDataPathArray, resolvedDataOwner } = $ireactive.getResolvedDataPathArrayWithResolvedKeys(currentComponent, undefined, path);
-		
+
 		if (value.length > 0) $ireactive.setDataFromPath(resolvedDataOwner, resolvedDataPathArray, value[0]);
 		if (currentComponent._impressInternal.iRoot._impressInternal.controlFlags.isDebug === true) {
 			$idebug.setStateChangeLog(currentComponent, path, resolvedDataOwner, resolvedDataPathArray);
