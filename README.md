@@ -120,7 +120,7 @@ export const child = IMPRESS.register(ICHILD);
 
 ```
 IMPRESS.register(IAPP);
-export { IAPP } //export anything from the module - the only purpose is to provide an import 
+export { IAPP } //export anything from the component module - the only purpose is to provide an import 
 ```
 6. Events are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string. Specify params, data.property/props.property etc. $e or $event is the event object, or if no params are specified the event object will be the first param. Rective data can also be passed as arguments.
 ```
