@@ -151,7 +151,12 @@ No more contrived usage of class props to pass mutation methods throughout a sys
 
 15. All Custom Element components must be hyphenated with one hyphen e.g. my-app, shopping-cart, address-form etc.
 
-16. <i-for> and <i-if> pre built components can be used. <i-for> takes two attributes - let="" and of="". Let defines a local instance representation of the iterable data item. The i-if component takes one attribute condition={data.foo} which is a Boolean. When true the component appears in the DOM, when false, it is removed.
+16. <i-for> and <i-if> pre built components can be used. <i-for> takes two attributes - let="" and of="". Let defines a local instance representation of the iterable data item that is a special prop. The i-if component takes one attribute condition={data.foo} which is a Boolean. When true the component appears in the DOM, when false, it is removed. <i-for> and <i-if> components can conditional show markup owned by the component in which they are declared, or children components, or both. You do not need a single containing tag. Children can also access parent data/props as if the i-for/i-if components are invisible. 
+```
+<i-for let="section" of="{data.sections}">
+	<i-child section={section}></i-child>
+</i-for>
+```
 	
 17. Every IMPRESS class component defines the following prototype methods
 	
