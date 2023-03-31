@@ -37,7 +37,7 @@ To use - see examples - (also see "i-for" pre-built component)
 
 2. import {IMPRESS} from "./impress.min.js";
 
-3. create your impress component as an extension of the IMPRESS class with properties for data. You can also define mixins and observers. The only requirement is that your class has a name property. The template is also optional, but will server as the component's markup. This is reactive, allowing for server side rendering and conditional component rendering. Templates are almost pure 100% valid HTML, unlike Vue2/3 with their pseudo markup and directives or React with it's JSX. (see below for templates).
+3. create your impress component as an extension of the IMPRESS class with properties for data. You can also define mixins and observers. The only requirement is that your class has a name property. The template is also optional, but will serve as the component's markup - unlike other frameworks the template is 100% valid markup. The template can contan reactive data automatically adding ReactiveMaps to the class, and event listeners added as JSON. Furthermore, template themselves are reactive allowing for full server-side rendering and/or conditional component rendering. No more Vue2/3 bloated pseudo-markup and directives, or JSX React render functions that are painfully static and slow to update iterable content. (see below for templates).
 
 4. impress takes the template as a template literal string
 
