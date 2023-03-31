@@ -20,7 +20,7 @@ iMpress is different - it is a high-speed lightweight wrapper for HTML Custom El
 - Memory usage is a fraction of the size of other frameworks, typically 5-10 times smaller.
 - Component code length is more concise, upto 20% smaller codebase.
 - Props are handled correctly as name spaced representations of data, full time travel debug is included to avoid the need for VueX/Redux.
-- Synchonous code, no more waiting for "nextTick" or components to mount.
+- Synchonous DOM updates, no more waiting for "nextTick" or components to mount.
 - Use async in your life cycle methods, if desired, or not, you are in full control.
 - Server-side and dynamic templates, native portals and slots.
 - No need for eventbus/emits/context API/sending class props — use the in-built custom query engine.
