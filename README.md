@@ -47,7 +47,7 @@ All components methods are declared on the prototype of the class, including obs
 let template = /*html*/`
 <link href="css/app.css" rel="stylesheet" type="text/css">
 <i-for class="children" let="child" of="{data.children}">
-	<i-child class="test-class" child={child}><div>This is a slot</div></i-child>
+	<i-child class="test-class" child={child}><div>This is a slot</div><div slot="my-slot">This is a named slot</div></i-child>
 </i-for>
 <style>
 * {
