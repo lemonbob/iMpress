@@ -73,7 +73,7 @@ class IAPP extends IMPRESS {
 	beforeCreate(){
 		//called before the component is created
 	}
-	afterMounted(){
+	afterMount(){
 		//called after the component mounts
 	}
 	beforeDestroy(){
@@ -102,7 +102,7 @@ class ICHILD extends IMPRESS {
 	beforeCreate(){
 		//called before the component is created
 	}
-	afterMounted(){
+	afterMount(){
 		//called after component mount
 	}
 	exampleMethod($e) {
