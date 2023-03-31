@@ -84,7 +84,8 @@ class IAPP extends IMPRESS {
 	}	
 }
 
-export const iapp = IMPRESS.register(IAPP);
+IMPRESS.register(IAPP);
+export { IAPP }
 ```
 
 ```
@@ -113,7 +114,8 @@ class ICHILD extends IMPRESS {
 	}
 }
 
-export const child = IMPRESS.register(ICHILD);
+IMPRESS.register(ICHILD);
+export { ICHILD }
 ```
 
 5. register your component with iMpress and export to any component that will use it in its markup
@@ -122,7 +124,7 @@ export const child = IMPRESS.register(ICHILD);
 IMPRESS.register(IAPP);
 export { IAPP } //export anything from the component module - the only purpose is to provide an import 
 ```
-6. Events are added as JSON strings in an i-event attribute - duplicate events are allowed in the JSON string. Specify params, data.property/props.property etc. $e or $event is the event object, or if no params are specified the event object will be the first param. Rective data can also be passed as arguments.
+6. Events are added as JSON strings in an i-event attribute - multiple events are allowed in the JSON as key/value pairs. Specify params, data.property/props.property etc. $e or $event is the event object, or if no params are specified the event object will be the first param. Rective data can also be passed as arguments.
 ```
 i-event={"click":"customMethod"}
 ```
