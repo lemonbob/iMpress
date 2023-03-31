@@ -1303,7 +1303,7 @@ _impress.createComponent = async (currentComponent) => {
 
 	//component has mounted
 	currentComponent._impressInternal.isMounted = true;
-	if (typeof currentComponent.afterMounted === 'function') await currentComponent.afterMounted(currentComponent);
+	if (typeof currentComponent.afterMount === 'function') await currentComponent.afterMount(currentComponent);
 };
 
 /**
@@ -1827,7 +1827,7 @@ class IFOR extends IMPRESS {
 		}
 		this._impressInternal.iNode.innerHTML = '';
 	}
-	afterMounted() {
+	afterMount() {
 		try {
 			if (Array.isArray(this.props.of) === true) this.#iterableType = 'Array';
 			else if (this.props.of instanceof Set) this.#iterableType = 'Set';
@@ -1971,7 +1971,7 @@ class IIF extends IMPRESS {
 		}
 		this._impressInternal.iNode.innerHTML = '';
 	}
-	afterMounted() {
+	afterMount() {
 		if (Object.hasOwn(this.props, 'condition') === true) {
 			this.propsCondition(this.props.condition);
 		} else {
