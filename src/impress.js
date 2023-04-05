@@ -1014,7 +1014,7 @@ class IMPRESS {
 		this.props = {};
 		this.data = {};
 		this._impressInternal = {};
-		
+
 		//class has been registered this is a call from connectComponent passing in the connected node
 		if (iNode !== undefined) {
 			let name = iNode.localName;
@@ -1062,24 +1062,6 @@ class IMPRESS {
 
 			_iRegister.set(baseInstance.name, impressClass);
 
-			//mixins
-			if (Array.isArray(baseInstance.mixins)) {
-				for (let i = baseInstance.mixins.length - 1; i >= 0; i--) {
-					const Mixin = baseInstance.mixins[i];
-					if (Mixin instanceof IMPRESS) {
-						//TODO need to find and loop methodNames on prototype here
-						let methodNames = Object.getOwnPropertyNames(Mixin.prototype);
-						for (let methodName of methodNames) {
-							if (impressClass.prototype[methodName] == undefined && typeof Mixin.prototype[methodName] === 'function') {
-								impressClass.prototype[methodName] = Mixin.prototype[methodName];
-							}
-						}
-					} else {
-						$idebug.warn('mixin', this);
-					}
-				}
-			}
-
 			new IMPRESSINTERNAL(baseInstance);
 
 			return true;
@@ -1087,10 +1069,10 @@ class IMPRESS {
 			throw new Error(`iMpress error --- ${baseInstance.name} invalid class --- class must extend an instance of IMPRESS`);
 		}
 	}
-	get template(){
+	get template() {
 		return this.#template;
 	}
-	set template(value){
+	set template(value) {
 		if (typeof value === 'string') {
 			if (value !== this.#template) {
 				if (this._impressInternal.isConnected !== true) {
