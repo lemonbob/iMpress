@@ -183,7 +183,7 @@ query params can all be defined in Arrays for multiple data/props/methods/names
 {name: ['i-app', 'i-child']}
 ```
 
-19. use the special attribute "i-html={data.myValue}" to insert data/props into the tag content as innerHTML. In these cases you should leave the tag empty. e.g. 
+19. use the special attribute "i-html={data.myValue}" to insert data/props into the tag content as innerHTML. In these cases you should leave the tag empty. This special attribute will not work on component tags, in those instances i-html would be converted to the prop - iHtml. 
 ```	
 <div i-html={data.html}></div>
 ```
