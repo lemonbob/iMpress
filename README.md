@@ -129,7 +129,7 @@ export { IAPP } //export anything from the component module - the only purpose i
 i-event={"click":"customMethod"}
 ```
 
-9. Props are passed similar to React-like props, an attribute wrapping a valid data or prop value will become automatically become a prop. In this way reactive attribute are not permitted on the custom component tag itself - these would become props.
+9. Props are passed similar to React-like props, an attribute wrapping a valid data or prop value will become automatically become a prop. In this way reactive attribute are not permitted on the custom component tag itself - these would become props. Kebab case props are converted to camelCase names - e.g. header-title will become props.headerTitle in the child component.
 ```
 <i-child title={data.title}></i-child>
 ```
@@ -182,5 +182,7 @@ query params can all be defined in Arrays for multiple data/props/methods/names
 ```
 {name: ['i-app', 'i-child']}
 ```
+
+19. use the special attribute "i-html={data.myValue}" to insert data/props into the tag content as innerHTML. In these cases you should leave the tag empty. e.g. <div i-html={data.html}></div>
 
 ### upto 1000 times faster than other frameworks
