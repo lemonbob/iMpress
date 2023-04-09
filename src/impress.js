@@ -255,8 +255,9 @@ $ireactive.setReactiveDataToDOM = (currentComponent, node, reactiveMap, isFirstS
 	reactiveMap.targetMap.forEach((type, iGuid) => {
 		if (type === 'OBSERVER') {
 			let observerFn = currentComponent._impressInternal.iObservers.get(reactiveMap.name);
-			if (isFirstSet === false && typeof currentComponent[observerFn] === 'function') {
-				currentComponent[observerFn](newValue);
+			if (isFirstSet === false) {
+				if (typeof currentComponent[observerFn] === 'function') currentComponent[observerFn](newValue);
+				else if (typeof observerFn === 'function') observerFn(newValue);
 			}
 		} else if (type === 'TEXT') {
 			$ireactive.refreshTextNodes(node, iGuid, newValue);
@@ -266,9 +267,42 @@ $ireactive.setReactiveDataToDOM = (currentComponent, node, reactiveMap, isFirstS
 
 			styleNode.innerHTML = styleNode.innerHTML.replace(regex, `/*${iGuid}*/${newValue}/*${iGuid}*/`);
 		} else if (type.substring(0, 5) !== 'props') {
-			$ireactive.refreshAttribute(node, iGuid, type, newValue, isFirstSet);
+			$ireactive.refreshAttribute(node, iGuid, type, newValue, isFirstSet);			
 		}
 	});
+};
+
+//REFRESH DATA METHODS
+
+/**
+ * @public
+ * @description
+ * refreshes all the text nodes of local dataName mapped to the data owner state change
+ * @param {Object} node
+ * @param {String} iGuid
+ * @param {*} value
+ */
+$ireactive.refreshTextNodes = (node, iGuid, value) => {
+	let textNode = node.querySelector(`[i-data="${iGuid}"]`);
+	if (textNode != undefined) textNode.textContent = value;
+};
+
+/**
+ * @private
+ * @description
+ * refreshes an attribute - called by refresh data
+ * @param {Object} node
+ * @param {String} iGuid
+ * @param {String} name
+ * @param {*} value
+ */
+$ireactive.refreshAttribute = (node, iGuid, name, value, isFirstSet) => {
+	let attrNode = node.querySelector(`[i-attribute="${iGuid}"]`);
+	if (attrNode != undefined) {
+		if (name === 'i-html') attrNode.innerHTML = value;
+		else if (isFirstSet === false && name === 'value' && attrNode.localName === 'input') attrNode.value = value;
+		else attrNode.setAttribute(name, value);		
+	}
 };
 
 /**
@@ -592,8 +626,8 @@ $ireactive.getReactiveMapFromBaseMap = (currentComponent, baseReactiveMap = {}, 
 	} else {
 		if (reactiveMap.dataPathArray[0] === 'props') {
 			//not dataOwner - currentComponent
-			let propMap = $ireactive.getPropMap(dataOwner, reactiveMap.reactiveSubMap, reactiveMap.dataPathArray);			
-			
+			let propMap = $ireactive.getPropMap(dataOwner, reactiveMap.reactiveSubMap, reactiveMap.dataPathArray);
+
 			if (propMap != undefined) {
 				let resolvedDataPathArray = $ireactive.getResolvedDataPathArray(propMap, reactiveMap);
 				reactiveMap.dataOwner = currentComponent;
@@ -620,42 +654,11 @@ $ireactive.getReactiveMapFromBaseMap = (currentComponent, baseReactiveMap = {}, 
 	//console.log(reactiveMap);
 	if ($ireactive.isComponentHasOwnData(reactiveMap, currentComponent._impressInternal.keys)) {
 		return reactiveMap;
-	} else if (isPassThrough !== true) { // && isSuperProp !== true) {
+	} else if (isPassThrough !== true) {
+		// && isSuperProp !== true) {
 		$idebug.error('getReactiveMapFromBaseMap', currentComponent, observerName);
 	} else {
 		return $ireactive.getReactiveMapFromBaseMap(currentComponent, baseReactiveMap, observerName, dataOwner._impressInternal.iParent, isSlot);
-	}
-};
-
-//REFRESH DATA METHODS
-
-/**
- * @public
- * @description
- * refreshes all the text nodes of local dataName mapped to the data owner state change
- * @param {Object} node
- * @param {String} iGuid
- * @param {*} value
- */
-$ireactive.refreshTextNodes = (node, iGuid, value) => {
-	let textNode = node.querySelector(`[i-data="${iGuid}"]`);
-	if (textNode != undefined) textNode.textContent = value;
-};
-
-/**
- * @private
- * @description
- * refreshes an attribute - called by refresh data
- * @param {Object} node
- * @param {String} iGuid
- * @param {String} name
- * @param {*} value
- */
-$ireactive.refreshAttribute = (node, iGuid, name, value, isFirstSet) => {
-	let attrNode = node.querySelector(`[i-attribute="${iGuid}"]`);
-	if (attrNode != undefined) {
-		if (isFirstSet === false && name === 'value' && attrNode.localName === 'input') attrNode.value = value;
-		else attrNode.setAttribute(name, value);
 	}
 };
 
@@ -1045,9 +1048,12 @@ class IMPRESS {
 				keys: [],
 				controlFlags: {}
 			};
+			//each component takes the entire array of its parent keys to enable it to decode the data key "?" chain
 			if (Array.isArray(iParent?._impressInternal.keys) === true) this._impressInternal.keys.push(...iParent._impressInternal.keys);
-			if (iParent?._impressInternal.createKey != undefined) this._impressInternal.keys.push(iParent._impressInternal.createKey);
-			if (this._impressInternal?.iParent?.createKey) this._impressInternal.controlFlags.isSkipRefresh = true;
+			if (iParent?._impressInternal.createKey != undefined) {
+				this._impressInternal.keys.push(iParent._impressInternal.createKey);
+				this._impressInternal.controlFlags.isSkipRefresh = true;
+			}
 			this._impressInternal.iNode.setAttribute('i-guid', this._impressInternal.iGuid);
 			impressComponents.set(this._impressInternal.iGuid, this);
 		}
@@ -1398,9 +1404,11 @@ _impress.setiPropsMaps = (currentComponent) => {
 
 		for (let attribute of attributes) {
 			if (attribute.value.substring(0, 5) === '{data' || attribute.value.substring(0, 6) === '{props') {
+				//below reducer converts kebab case into camelCase
+				let attributeName = Array.prototype.reduce.call(attribute.name, (a, c) => (a[a.length - 1] === '-' ? a.substring(0, a.length - 1) + c.toUpperCase() : a + c), '');
 				let parentComponent = currentComponent._impressInternal.iParent;
 				let dataPath = attribute.value.substring(1, attribute.value.length - 1);
-				let propName = 'props.' + attribute.name;
+				let propName = 'props.' + attributeName;
 				let dataOwner = currentComponent._impressInternal.controlFlags.globalState?.has(propName) === true ? currentComponent._impressInternal.iRoot : parentComponent;
 				let propMap;
 
@@ -1431,7 +1439,7 @@ _impress.setiPropsMaps = (currentComponent) => {
 					$ireactive.setReactiveMap(currentComponent, propName, propMap, false);
 					let value = $ireactive.getValueFromLookup(propMap.resolvedDataOwner, propMap.reactiveSubMap, propMap.resolvedDataPathArray, currentComponent._impressInternal.keys);
 
-					currentComponent.props[attribute.name] = value;
+					currentComponent.props[attributeName] = value;
 					if (currentComponent._impressInternal.iParent._impressInternal.name === 'i-for') currentComponent._impressInternal.iParent.data.cachedMaps.set(propName, propMap);
 				}
 			}
@@ -1795,14 +1803,23 @@ class IFOR extends IMPRESS {
 	}
 	beforeCreate() {
 		let contentHTML = this._impressInternal.iNode.innerHTML;
-		let valueAttribute = this._impressInternal.iNode.getAttribute('let');
+		let valueAttribute;
+		if (this?.props?.of !== undefined) {
+			valueAttribute = this._impressInternal.iNode.getAttribute('let');
+		} else if (this?.props.forEach !== undefined) {
+			valueAttribute = this._impressInternal.iNode.getAttribute('value');
+		}
+		let keyAttribute = this._impressInternal.iNode.getAttribute('key');
 
 		this.data.iterablePropName = valueAttribute.trim();
+		if (keyAttribute != undefined) this.data.iterableKey = keyAttribute.trim();
+
 		if (this._impressInternal.iNode.children.length === 1) this.#isSingleChild = true;
 		if (this._impressInternal.iNode.children.length > 0) {
 			if (contentHTML != undefined && contentHTML !== '') {
 				let template = contentHTML;
 				template = template.replaceAll(`{${this.data.iterablePropName}`, '{props.of.?');
+				//template = template.replaceAll(`{${this.data.iterableKey}`, '{props.of.?');
 				this.#template = $itemplate.iAttributesHtml(template, this._impressInternal.iSlotReactive, this._impressInternal.iSlotEvents);
 			}
 			this.#templateNode.innerHTML = this.#template;
@@ -1828,9 +1845,8 @@ class IFOR extends IMPRESS {
 			if (name === 'OBSERVER') {
 				if (isFirstSet === false) {
 					let observerFn = this._impressInternal.iObservers.get(reactiveMap.name);
-					if (typeof this[observerFn] === 'function') {
-						this[observerFn](newValue);
-					}
+					if (typeof this[observerFn] === 'function') this[observerFn](newValue);
+					else if (typeof observerFn === 'function') observerFn(newValue);
 				}
 			} else if (name === 'TEXT') {
 				this.props.of.forEach((value, key) => {
@@ -1884,6 +1900,7 @@ class IFOR extends IMPRESS {
 			let i = 0;
 			iterable.forEach((value, key) => {
 				if (i >= this.#displayedSize) {
+					//if the use of key is required in th template of non-components we need to add te replace here - which is slower
 					let childFragment = this.#templateNode.content.cloneNode(true);
 
 					_impress.setiEventMaps(this, childFragment, this._impressInternal.iSlotEvents);
@@ -1897,6 +1914,7 @@ class IFOR extends IMPRESS {
 						let iForChild = Array.from(childFragment.childNodes);
 						this.#iforChildren.set(key, iForChild);
 					}
+					//console.log(childFragment.childNodes[[0]]);
 					this._impressInternal.createKey = key;
 					this._impressInternal.iNode.appendChild(childFragment);
 				}
@@ -1904,16 +1922,17 @@ class IFOR extends IMPRESS {
 			});
 			this.#displayedSize = size;
 		} else {
-			//TODO
 			this.#iforChildren.forEach((child, key) => {
 				if (Array.isArray(iterable)) {
-					if (iterable.includes(key) === false) {
-						child.remove();
+					if (key >= iterable.length) {
+						if (Array.isArray(child)) child.forEach((node) => node.remove());
+						else child.remove();
 						this.#iforChildren.delete(key);
 					}
 				} else {
 					if (iterable.has(key) === false) {
-						child.remove();
+						if (Array.isArray(child)) child.forEach((node) => node.remove());
+						else child.remove();
 						this.#iforChildren.delete(key);
 					}
 				}
@@ -1965,9 +1984,8 @@ class IIF extends IMPRESS {
 			if (name === 'OBSERVER') {
 				if (isFirstSet === false) {
 					let observerFn = this._impressInternal.iObservers.get(reactiveMap.name);
-					if (typeof this[observerFn] === 'function') {
-						this[observerFn](newValue);
-					}
+					if (typeof this[observerFn] === 'function') this[observerFn](newValue);
+					else if (typeof observerFn === 'function') observerFn(newValue);
 				}
 			}
 		});
