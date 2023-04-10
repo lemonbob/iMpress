@@ -1529,8 +1529,10 @@ _impress.setiEventMaps = function (currentComponent, customTemplate, iEvents) {
 										v = e;
 									} else if (parseFloat(v) === Number(v)) {
 										v = parseFloat(v);
-									} else if (v === 'true' || v === 'false') {
-										v = Boolean(v);
+									} else if (v === 'true') {
+										v = true;										
+									} else if (v === 'false') {
+										v = false;
 									} else if (v.substring(0, 5) === 'data.' || v.substring(0, 6) === 'props.') {
 										let path = v.match(/[^\[\]\.\{\}]+/g);
 										let dataSource = methodSource;
